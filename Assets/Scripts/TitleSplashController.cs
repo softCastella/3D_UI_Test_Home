@@ -1,5 +1,6 @@
 using System.Collections;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public sealed class TitleSplashController : MonoBehaviour
 {
@@ -16,6 +17,11 @@ public sealed class TitleSplashController : MonoBehaviour
 
     [Header("Partner Logos (Logos)")]
     [SerializeField, Min(0f)] private float partnerFadeInDuration = 0.6f;
+
+    [Header("Scene Transition")]
+    [SerializeField, Min(0f)] private float visibleDuration = 1.5f;
+    [SerializeField, Min(0f)] private float fadeOutDuration = 0.6f;
+    [SerializeField] private string nextSceneName = "2_Intro";
 
     private CanvasGroup primaryGroup;
     private CanvasGroup partnerGroup;
@@ -40,6 +46,40 @@ public sealed class TitleSplashController : MonoBehaviour
         yield return Wait(partnerLogoDelay);
 
         yield return Fade(partnerGroup, 0f, 1f, partnerFadeInDuration);
+        yield return Wait(visibleDuration);
+        yield return FadeOutLogos();
+
+        if (!Application.CanStreamedLevelBeLoaded(nextSceneName))
+        {
+            Debug.LogError($"TitleSplashController: Build Settings에 '{nextSceneName}' 씬이 없습니다.", this);
+            yield break;
+        }
+
+        yield return SceneManager.LoadSceneAsync(nextSceneName, LoadSceneMode.Single);
+    }
+
+    private IEnumerator FadeOutLogos()
+    {
+        float elapsed = 0f;
+        if (fadeOutDuration <= 0f)
+        {
+            SetAlpha(primaryGroup, 0f);
+            SetAlpha(partnerGroup, 0f);
+            yield break;
+        }
+
+        while (elapsed < fadeOutDuration)
+        {
+            elapsed += Mathf.Min(Time.unscaledDeltaTime, MaximumFadeDeltaPerFrame);
+            float progress = Mathf.Clamp01(elapsed / fadeOutDuration);
+            float alpha = 1f - Mathf.SmoothStep(0f, 1f, progress);
+            SetAlpha(primaryGroup, alpha);
+            SetAlpha(partnerGroup, alpha);
+            yield return null;
+        }
+
+        SetAlpha(primaryGroup, 0f);
+        SetAlpha(partnerGroup, 0f);
     }
 
     private static CanvasGroup GetOrAddCanvasGroup(GameObject target)

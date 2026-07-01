@@ -59,6 +59,27 @@
 - VR 카메라는 혼합기 중앙에 놓고, Root Scale은 `(1, 1, 1)`, 반경은 기본 3~5m 범위를 권장한다.
 - 현재 확인용 씬은 `Assets/Scenes/insideMixer.unity`이다.
 
+### 혼합기 맨홀 구성
+
+- 카메라 시작 위치 바로 뒤쪽인 혼합기 로컬 `-Z` 벽에 맨홀을 배치한다.
+- 맨홀은 원형 개구부, 고정 프레임, 왼쪽 세로 힌지, 원형 문으로 구성한다.
+- 문에는 힌지 반대쪽 세로형 손잡이를 부착한다.
+- 맨홀 문은 약 105도로 열리고 1.2초 동안 자동 보간하여 움직인다.
+- 초기 프로토타입에서는 문 또는 손잡이 선택 시 자동으로 열고 닫는 방식을 사용한다.
+- 현재 개구부는 어두운 내부면을 사용한 시각적 표현이며, 실제 관통 구멍이 필요하면 셰이더 Alpha Clip 또는 벽 메시 절개를 추가한다.
+
+### insideMixer XR 구성
+
+- 단독 카메라에 직접 Center Eye 포즈를 적용하는 방식은 사용하지 않는다.
+- 공식 Starter Assets의 `XR Origin (XR Rig)`을 기준 XR 구조로 사용한다.
+- 기존 `XRHeadTrackedCamera`는 XR Origin 카메라와 포즈가 중복될 수 있으므로 씬에서 제거한다.
+- XR Origin에는 공식 `Left Controller`, `Right Controller`와 XR Hands의 `Left Hand`, `Right Hand` 시각화를 구성한다.
+- 룸스케일 및 Quest Link 원점 차이는 카메라 Transform을 직접 고정하지 않고 `XROrigin.MoveCameraToWorldLocation`으로 보정한다.
+- 혼합기 내부 시작 눈 위치는 월드 좌표 `(-0.472, 1.0, -12.14)`, 기본 전방은 `+Z`로 한다.
+- 혼합기 바닥에 보행용 Collider가 없으므로 현재 씬에서는 XR Rig의 `Gravity`와 `Jump`를 비활성화한다.
+- OpenXR Hand Tracking Subsystem과 Meta Hand Tracking Aim을 Android 및 Standalone에서 활성화한다.
+- Quest의 실제 손 추적과 모션 컨트롤러는 입력 모달리티에 따라 전환한다.
+
 ## 구현 파일
 
 - `Assets/Scenes/App.unity`
@@ -67,7 +88,11 @@
 - `Assets/Scripts/AppSceneBootstrap.cs`
 - `Assets/Scripts/TitleSplashController.cs`
 - `Assets/Scripts/ChemicalMixerInterior.cs`
+- `Assets/Scripts/MixerManholeController.cs`
+- `Assets/Scripts/ManholeToggleTarget.cs`
+- `Assets/Scripts/XRStartPoseAligner.cs`
 - `Assets/Editor/ChemicalMixerInteriorMaker.cs`
+- `Assets/Editor/InsideMixerXRSetup.cs`
 - `Assets/Shaders/ChemicalMixerInterior.shader`
 - `Docs/Bug/2026-07-01_TitleScene-XR-Logo-Fade-Flash.md`
 
@@ -77,10 +102,15 @@
 - 파트너 로고가 하단 중앙에서 지정 순서로 자연스럽게 페이드 인됨을 확인했다.
 - 혼합기 내부에서 벽, 상단 돔, 축과 블레이드가 보이는 것을 확인했다.
 - Main Camera 중심 배치를 통해 VR에서 고개를 돌렸을 때 전 방향을 볼 수 있는 구조로 구성했다.
+- Play Mode에서 XR Origin이 바닥 Collider 없이 중력에 의해 Y 약 -4878까지 낙하하는 원인을 확인했다.
+- Gravity와 Jump를 비활성화하고 실행 중 카메라를 혼합기 내부 시작 좌표로 복구했다.
+- XR Origin, 좌·우 컨트롤러, 좌·우 XR Hands 및 입력 모달리티 연결을 씬에 적용했다.
 
 ## 후속 확인 사항
 
 - 실제 Quest 기기에서 혼합기 내부 360도 시야와 근거리 클리핑을 확인한다.
+- Quest에서 컨트롤러 모드와 실제 손 추적 모드가 정상 전환되는지 확인한다.
+- 맨홀 손잡이를 XR 핀치 또는 직접 상호작용으로 조작하도록 XR Interactable을 연결한다.
 - 금속 셰이더의 반사 강도와 밝기가 HMD에서 과도하지 않은지 조정한다.
 - App 씬에서 TitleScene으로의 전환 시 검정 프레임과 XR 초기화 타이밍을 확인한다.
 - 타이틀 이후 메인 씬으로 넘어가는 최종 조건과 시점은 추후 결정한다.
