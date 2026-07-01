@@ -87,7 +87,7 @@ public sealed class ChemicalMixerInterior : MonoBehaviour
     void CreateMaterial()
     {
         if (generatedMaterial != null)
-            DestroyObject(generatedMaterial);
+            SafeDestroy(generatedMaterial);
 
         var shader = Shader.Find("Project/Chemical Mixer Interior");
         if (shader == null)
@@ -107,7 +107,7 @@ public sealed class ChemicalMixerInterior : MonoBehaviour
         generatedMaterial.SetFloat("_BrushStrength", brushStrength);
 
         if (darkMaterial != null)
-            DestroyObject(darkMaterial);
+            SafeDestroy(darkMaterial);
         darkMaterial = new Material(generatedMaterial)
         {
             name = "ChemicalMixerManhole_DarkMaterial",
@@ -394,7 +394,7 @@ public sealed class ChemicalMixerInterior : MonoBehaviour
         primitive.transform.SetParent(parent, false);
         var collider = primitive.GetComponent<Collider>();
         if (collider != null && !keepCollider)
-            DestroyObject(collider);
+            SafeDestroy(collider);
         primitive.GetComponent<MeshRenderer>().sharedMaterial = generatedMaterial;
         return primitive;
     }
@@ -403,10 +403,10 @@ public sealed class ChemicalMixerInterior : MonoBehaviour
     {
         var existing = transform.Find(GeneratedRootName);
         if (existing != null)
-            DestroyObject(existing.gameObject);
+            SafeDestroy(existing.gameObject);
     }
 
-    static void DestroyObject(Object target)
+    static void SafeDestroy(Object target)
     {
         if (target == null)
             return;

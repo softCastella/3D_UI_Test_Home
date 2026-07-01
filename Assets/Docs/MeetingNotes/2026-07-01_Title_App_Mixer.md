@@ -15,14 +15,15 @@
 
 ### 애플리케이션 시작 흐름
 
-- 애플리케이션 최초 실행 씬은 `Assets/Scenes/App.unity`로 한다.
+- 애플리케이션 최초 실행 씬은 `Assets/Scenes/0_App.unity`로 한다.
 - Build Settings의 씬 순서는 다음과 같이 구성한다.
-  1. `App`
-  2. `TitleScene`
-  3. `Confined Space Scene_half`
-- `AppSceneBootstrap`이 App 씬 시작 후 한 프레임을 기다리고 `TitleScene`을 비동기로 로드한다.
+  1. `0_App`
+  2. `1_TitleScene`
+  3. `2_Intro`
+  4. `Confined Space Scene_half`
+- `AppSceneBootstrap`이 App 씬 시작 후 한 프레임을 기다리고 `1_TitleScene`을 비동기로 로드한다.
 - App 씬의 Main Camera 배경은 검정색 Solid Color로 사용한다.
-- 타이틀 연출이 끝난 뒤 다음 메인 씬으로 자동 전환하는 기능은 현재 적용하지 않는다.
+- 타이틀 연출이 끝나면 로고를 페이드 아웃하고 `2_Intro` 씬으로 자동 전환한다.
 
 ### 타이틀 씬 로고 배치
 
@@ -34,7 +35,7 @@
 ### 타이틀 로고 연출
 
 - 타이틀 로고가 먼저 페이드 인되고, 설정된 지연 후 파트너 로고가 페이드 인된다.
-- 두 로고 그룹 모두 페이드 아웃하지 않고 화면에 유지한다.
+- 두 로고 그룹은 설정된 시간 동안 유지한 뒤 함께 페이드 아웃한다.
 - 페이드 시간과 로고 사이 지연은 `TitleSplashController` Inspector에서 조정 가능하게 한다.
 - XR 시작 직후 타이틀 로고가 번쩍이는 현상을 방지하기 위해 다음 방식을 사용한다.
   - 알파 0 상태에서 Canvas 강제 갱신
@@ -57,7 +58,7 @@
 - 생성 도구 메뉴는 `Tools > Environment > Create Chemical Mixer Interior`를 사용한다.
 - 기존 혼합기를 카메라 중심으로 옮길 때는 `Tools > Environment > Center Selected Mixer On Main Camera`를 사용한다.
 - VR 카메라는 혼합기 중앙에 놓고, Root Scale은 `(1, 1, 1)`, 반경은 기본 3~5m 범위를 권장한다.
-- 현재 확인용 씬은 `Assets/Scenes/insideMixer.unity`이다.
+- 현재 확인용 씬은 `Assets/Scenes/4_InsideMixer.unity`이다.
 
 ### 혼합기 맨홀 구성
 
@@ -66,6 +67,7 @@
 - 문에는 힌지 반대쪽 세로형 손잡이를 부착한다.
 - 맨홀 문은 약 105도로 열리고 1.2초 동안 자동 보간하여 움직인다.
 - 초기 프로토타입에서는 문 또는 손잡이 선택 시 자동으로 열고 닫는 방식을 사용한다.
+- 문과 손잡이는 `XRSimpleInteractable` 선택 이벤트를 사용해 XR 컨트롤러와 손 핀치 입력에서 동일하게 열고 닫는다.
 - 현재 개구부는 어두운 내부면을 사용한 시각적 표현이며, 실제 관통 구멍이 필요하면 셰이더 Alpha Clip 또는 벽 메시 절개를 추가한다.
 
 ### insideMixer XR 구성
@@ -82,9 +84,10 @@
 
 ## 구현 파일
 
-- `Assets/Scenes/App.unity`
-- `Assets/Scenes/TitleScene.unity`
-- `Assets/Scenes/insideMixer.unity`
+- `Assets/Scenes/0_App.unity`
+- `Assets/Scenes/1_TitleScene.unity`
+- `Assets/Scenes/2_Intro.unity`
+- `Assets/Scenes/4_InsideMixer.unity`
 - `Assets/Scripts/AppSceneBootstrap.cs`
 - `Assets/Scripts/TitleSplashController.cs`
 - `Assets/Scripts/ChemicalMixerInterior.cs`
@@ -110,7 +113,7 @@
 
 - 실제 Quest 기기에서 혼합기 내부 360도 시야와 근거리 클리핑을 확인한다.
 - Quest에서 컨트롤러 모드와 실제 손 추적 모드가 정상 전환되는지 확인한다.
-- 맨홀 손잡이를 XR 핀치 또는 직접 상호작용으로 조작하도록 XR Interactable을 연결한다.
+- 맨홀 문과 손잡이의 XR 선택 범위 및 핀치 조작감을 Quest에서 확인한다.
 - 금속 셰이더의 반사 강도와 밝기가 HMD에서 과도하지 않은지 조정한다.
 - App 씬에서 TitleScene으로의 전환 시 검정 프레임과 XR 초기화 타이밍을 확인한다.
-- 타이틀 이후 메인 씬으로 넘어가는 최종 조건과 시점은 추후 결정한다.
+- 타이틀 이후 `2_Intro` 씬으로 자동 전환되는 타이밍을 HMD에서 확인한다.
