@@ -1,0 +1,11 @@
+[mcp_servers.unity]
+command = "C:\\Users\\user\\.unity\\relay\\relay_win.exe"
+args = [
+  "--mcp",
+  "--project-path",
+  "C:\\Users\\user\\Documents\\Workspace\\3D_UI_Test_home",
+]
+startup_timeout_sec = 30
+tool_timeout_sec = 120
+enabled = true
+default_tools_approval_mode = "prompt"
