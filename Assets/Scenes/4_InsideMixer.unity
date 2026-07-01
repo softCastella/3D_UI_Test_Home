@@ -1545,6 +1545,7 @@ MonoBehaviour:
   targetEyePosition: {x: -0.472, y: 1, z: -12.14}
   targetForward: {x: 0, y: 0, z: 1}
   settleFrames: 3
+  deviceWaitSeconds: 10
 --- !u!1 &667876238
 GameObject:
   m_ObjectHideFlags: 0

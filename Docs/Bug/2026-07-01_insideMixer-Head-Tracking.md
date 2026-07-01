@@ -3,7 +3,7 @@
 | 항목 | 내용 |
 |---|---|
 | 날짜 | 2026-07-01 |
-| 대상 씬 | `Assets/Scenes/insideMixer.unity` |
+| 대상 씬 | `Assets/Scenes/4_InsideMixer.unity` |
 | 환경 | Unity 6000.4.8f1 / OpenXR / Meta Quest·PC VR |
 | 상태 | 원인 확인 및 수정 완료, 기기 재검증 필요 |
 
@@ -60,7 +60,7 @@
 
 ## 관련 파일
 
-- `Assets/Scenes/insideMixer.unity`
+- `Assets/Scenes/4_InsideMixer.unity`
 - `Assets/Scripts/XRStartPoseAligner.cs`
 - `Assets/Editor/InsideMixerXRSetup.cs`
 - `Assets/XR/Settings/OpenXR Package Settings.asset`

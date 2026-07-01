@@ -5,7 +5,7 @@ using UnityEngine.SceneManagement;
 
 public static class InsideMixerXRSetup
 {
-    const string ScenePath = "Assets/Scenes/insideMixer.unity";
+    const string ScenePath = "Assets/Scenes/4_InsideMixer.unity";
     const string RigPath = "Assets/Samples/XR Interaction Toolkit/3.4.1/Starter Assets/Prefabs/XR Origin (XR Rig).prefab";
     const string LeftHandPath = "Assets/Samples/XR Hands/1.7.3/HandVisualizer/Prefabs/Left Hand Tracking.prefab";
     const string RightHandPath = "Assets/Samples/XR Hands/1.7.3/HandVisualizer/Prefabs/Right Hand Tracking.prefab";
@@ -31,7 +31,7 @@ public static class InsideMixerXRSetup
             SetupCurrentScene();
     }
 
-    [MenuItem("Tools/XR/Setup insideMixer XR Origin and Hands")]
+    [MenuItem("Tools/XR/Setup Inside Mixer XR Origin and Hands")]
     public static void SetupFromMenu()
     {
         if (SceneManager.GetActiveScene().path != ScenePath)
@@ -55,7 +55,7 @@ public static class InsideMixerXRSetup
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
             Selection.activeGameObject = existingRig;
-            Debug.Log("Updated the existing insideMixer XR Origin start alignment.", existingRig);
+            Debug.Log("Updated the existing Inside Mixer XR Origin start alignment.", existingRig);
             return;
         }
 
@@ -103,7 +103,7 @@ public static class InsideMixerXRSetup
         EditorSceneManager.SaveScene(scene);
         Selection.activeGameObject = rig;
         EditorGUIUtility.PingObject(rig);
-        Debug.Log("Configured insideMixer with XR Origin, Left/Right Controllers, and XR Hands.", rig);
+        Debug.Log("Configured Inside Mixer with XR Origin, Left/Right Controllers, and XR Hands.", rig);
     }
 
     static void EnsureStartPoseAligner(GameObject rig)
