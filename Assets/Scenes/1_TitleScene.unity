@@ -456,6 +456,9 @@ MonoBehaviour:
   primaryFadeInDuration: 1
   partnerLogoDelay: 0.6
   partnerFadeInDuration: 0.6
+  visibleDuration: 1.5
+  fadeOutDuration: 0.6
+  nextSceneName: 2_Intro
 --- !u!1 &823054475
 GameObject:
   m_ObjectHideFlags: 0

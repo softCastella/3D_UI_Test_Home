@@ -28,7 +28,15 @@ public sealed class ChemicalMixerInterior : MonoBehaviour
     [Range(0f, 1f)] public float smoothness = 0.62f;
     [Range(0f, 0.3f)] public float brushStrength = 0.08f;
 
+    [Header("Rear Manhole")]
+    public bool createManhole = true;
+    [Min(0.3f)] public float manholeDiameter = 1.1f;
+    public float manholeHeight = 0.15f;
+    [Range(45f, 150f)] public float manholeOpenAngle = 105f;
+    [Min(0.1f)] public float manholeMoveDuration = 1.2f;
+
     Material generatedMaterial;
+    Material darkMaterial;
     bool rebuildQueued;
 
     void OnEnable()
@@ -72,6 +80,8 @@ public sealed class ChemicalMixerInterior : MonoBehaviour
         CreateShaft(generatedRoot.transform);
         CreateBlades(generatedRoot.transform);
         CreateStructuralRings(generatedRoot.transform);
+        if (createManhole)
+            CreateManhole(generatedRoot.transform);
     }
 
     void CreateMaterial()
@@ -95,6 +105,17 @@ public sealed class ChemicalMixerInterior : MonoBehaviour
         generatedMaterial.SetColor("_DarkColor", darkSteelColor);
         generatedMaterial.SetFloat("_Smoothness", smoothness);
         generatedMaterial.SetFloat("_BrushStrength", brushStrength);
+
+        if (darkMaterial != null)
+            DestroyObject(darkMaterial);
+        darkMaterial = new Material(generatedMaterial)
+        {
+            name = "ChemicalMixerManhole_DarkMaterial",
+            hideFlags = HideFlags.HideAndDontSave
+        };
+        darkMaterial.SetColor("_BaseColor", new Color(0.015f, 0.02f, 0.022f, 1f));
+        darkMaterial.SetColor("_DarkColor", Color.black);
+        darkMaterial.SetFloat("_Smoothness", 0.08f);
     }
 
     void CreateVessel(Transform parent)
@@ -118,8 +139,8 @@ public sealed class ChemicalMixerInterior : MonoBehaviour
         var bottomY = -wallHeight * 0.5f;
         var topY = wallHeight * 0.5f;
 
-        AddRing(vertices, normals, uvs, radius, bottomY, 0f);
-        AddRing(vertices, normals, uvs, radius, topY, 0.58f);
+        AddRing(vertices, normals, uvs, radius, bottomY, 0f, -1f, 0f);
+        AddRing(vertices, normals, uvs, radius, topY, 0.58f, -1f, 0f);
 
         for (var ring = 1; ring <= domeSegments; ring++)
         {
@@ -127,21 +148,28 @@ public sealed class ChemicalMixerInterior : MonoBehaviour
             var angle = t * Mathf.PI * 0.5f;
             var ringRadius = radius * Mathf.Cos(angle);
             var y = topY + domeHeight * Mathf.Sin(angle);
-            AddRing(vertices, normals, uvs, Mathf.Max(0.001f, ringRadius), y, Mathf.Lerp(0.58f, 1f, t));
+            AddRing(vertices, normals, uvs, Mathf.Max(0.001f, ringRadius), y,
+                Mathf.Lerp(0.58f, 1f, t),
+                -Mathf.Cos(angle) / radius,
+                -Mathf.Sin(angle) / domeHeight);
         }
 
         ConnectRings(triangles, domeSegments + 1);
 
         var bottomStart = vertices.Count;
-        AddRing(vertices, normals, uvs, radius, bottomY, 0f);
+        AddRing(vertices, normals, uvs, radius, bottomY, 0f, -1f, 0f);
         for (var ring = 1; ring <= domeSegments; ring++)
         {
             var t = ring / (float)domeSegments;
             var angle = t * Mathf.PI * 0.5f;
             AddRing(vertices, normals, uvs, Mathf.Max(0.001f, radius * Mathf.Cos(angle)),
-                bottomY - bottomDishDepth * Mathf.Sin(angle), Mathf.Lerp(0f, 0.16f, t));
+                bottomY - bottomDishDepth * Mathf.Sin(angle), Mathf.Lerp(0f, 0.16f, t),
+                -Mathf.Cos(angle) / radius,
+                Mathf.Sin(angle) / bottomDishDepth);
         }
-        ConnectRings(triangles, domeSegments, bottomStart / (radialSegments + 1));
+        // The bottom rings progress downward, opposite to the wall and top dome.
+        // Reverse their winding so the dish faces the vessel interior.
+        ConnectRings(triangles, domeSegments, bottomStart / (radialSegments + 1), true);
 
         var mesh = new Mesh { indexFormat = UnityEngine.Rendering.IndexFormat.UInt32 };
         mesh.SetVertices(vertices);
@@ -152,7 +180,8 @@ public sealed class ChemicalMixerInterior : MonoBehaviour
         return mesh;
     }
 
-    void AddRing(List<Vector3> vertices, List<Vector3> normals, List<Vector2> uvs, float ringRadius, float y, float v)
+    void AddRing(List<Vector3> vertices, List<Vector3> normals, List<Vector2> uvs,
+        float ringRadius, float y, float v, float radialNormal, float verticalNormal)
     {
         for (var segment = 0; segment <= radialSegments; segment++)
         {
@@ -160,12 +189,12 @@ public sealed class ChemicalMixerInterior : MonoBehaviour
             var angle = u * Mathf.PI * 2f;
             var radial = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle));
             vertices.Add(radial * ringRadius + Vector3.up * y);
-            normals.Add(-radial);
+            normals.Add((radial * radialNormal + Vector3.up * verticalNormal).normalized);
             uvs.Add(new Vector2(u, v));
         }
     }
 
-    void ConnectRings(List<int> triangles, int connectionCount, int startRing = 0)
+    void ConnectRings(List<int> triangles, int connectionCount, int startRing = 0, bool reverseWinding = false)
     {
         var stride = radialSegments + 1;
         for (var ring = 0; ring < connectionCount; ring++)
@@ -180,8 +209,16 @@ public sealed class ChemicalMixerInterior : MonoBehaviour
                 var d = next + segment + 1;
                 // Wind the shell toward the vessel interior. With back-face
                 // culling this makes the enclosure invisible from outside.
-                triangles.Add(a); triangles.Add(b); triangles.Add(c);
-                triangles.Add(b); triangles.Add(d); triangles.Add(c);
+                if (reverseWinding)
+                {
+                    triangles.Add(a); triangles.Add(c); triangles.Add(b);
+                    triangles.Add(b); triangles.Add(c); triangles.Add(d);
+                }
+                else
+                {
+                    triangles.Add(a); triangles.Add(b); triangles.Add(c);
+                    triangles.Add(b); triangles.Add(d); triangles.Add(c);
+                }
             }
         }
     }
@@ -229,6 +266,71 @@ public sealed class ChemicalMixerInterior : MonoBehaviour
             filter.sharedMesh = BuildTorusMesh(radius * 0.995f, 0.035f, radialSegments, 8);
             filter.sharedMesh.name = "ChemicalMixer_ReinforcementRing";
             renderer.sharedMaterial = generatedMaterial;
+        }
+    }
+
+    void CreateManhole(Transform parent)
+    {
+        var manhole = new GameObject("Rear_Manhole");
+        manhole.transform.SetParent(parent, false);
+
+        var doorRadius = manholeDiameter * 0.5f;
+        // The viewer starts near the vessel's -Z wall. Place the manhole on
+        // that rear wall and offset its parts toward the vessel interior (+Z).
+        var wallZ = -radius + 0.045f;
+
+        var opening = CreatePrimitive(PrimitiveType.Cylinder, "Opening_Dark", manhole.transform);
+        opening.transform.localPosition = new Vector3(0f, manholeHeight, wallZ + 0.012f);
+        opening.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+        opening.transform.localScale = new Vector3(doorRadius * 0.94f, 0.012f, doorRadius * 0.94f);
+        opening.GetComponent<MeshRenderer>().sharedMaterial = darkMaterial;
+
+        var frame = new GameObject("Manhole_Frame");
+        frame.transform.SetParent(manhole.transform, false);
+        frame.transform.localPosition = new Vector3(0f, manholeHeight, wallZ + 0.018f);
+        frame.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+        var frameFilter = frame.AddComponent<MeshFilter>();
+        frameFilter.sharedMesh = BuildTorusMesh(doorRadius, 0.055f, 48, 10);
+        frameFilter.sharedMesh.name = "Mixer_ManholeFrame";
+        frame.AddComponent<MeshRenderer>().sharedMaterial = generatedMaterial;
+
+        var hinge = new GameObject("Hinge_Pivot");
+        hinge.transform.SetParent(manhole.transform, false);
+        hinge.transform.localPosition = new Vector3(-doorRadius, manholeHeight, wallZ + 0.055f);
+
+        var controller = hinge.AddComponent<MixerManholeController>();
+        controller.openAngle = manholeOpenAngle;
+        controller.moveDuration = manholeMoveDuration;
+
+        var plate = CreatePrimitive(PrimitiveType.Cylinder, "Hatch_Door", hinge.transform, true);
+        plate.transform.localPosition = new Vector3(doorRadius, 0f, 0f);
+        plate.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+        plate.transform.localScale = new Vector3(doorRadius * 0.96f, 0.04f, doorRadius * 0.96f);
+        plate.AddComponent<ManholeToggleTarget>().controller = controller;
+
+        var hingeBar = CreatePrimitive(PrimitiveType.Cylinder, "Hinge_Bar", hinge.transform);
+        hingeBar.transform.localPosition = Vector3.zero;
+        hingeBar.transform.localScale = new Vector3(0.055f, doorRadius * 0.72f, 0.055f);
+
+        CreateVerticalHandle(hinge.transform, controller, doorRadius);
+    }
+
+    void CreateVerticalHandle(Transform hinge, MixerManholeController controller, float doorRadius)
+    {
+        var handleRoot = new GameObject("Vertical_Handle");
+        handleRoot.transform.SetParent(hinge, false);
+        handleRoot.transform.localPosition = new Vector3(doorRadius * 1.62f, 0f, 0.13f);
+
+        var grip = CreatePrimitive(PrimitiveType.Cylinder, "Grip", handleRoot.transform, true);
+        grip.transform.localScale = new Vector3(0.032f, 0.19f, 0.032f);
+        grip.AddComponent<ManholeToggleTarget>().controller = controller;
+
+        for (var side = -1; side <= 1; side += 2)
+        {
+            var mount = CreatePrimitive(PrimitiveType.Cube,
+                side < 0 ? "Bottom_Mount" : "Top_Mount", handleRoot.transform);
+            mount.transform.localPosition = new Vector3(0f, side * 0.19f, -0.065f);
+            mount.transform.localScale = new Vector3(0.065f, 0.045f, 0.16f);
         }
     }
 
@@ -285,13 +387,13 @@ public sealed class ChemicalMixerInterior : MonoBehaviour
         return mesh;
     }
 
-    GameObject CreatePrimitive(PrimitiveType type, string objectName, Transform parent)
+    GameObject CreatePrimitive(PrimitiveType type, string objectName, Transform parent, bool keepCollider = false)
     {
         var primitive = GameObject.CreatePrimitive(type);
         primitive.name = objectName;
         primitive.transform.SetParent(parent, false);
         var collider = primitive.GetComponent<Collider>();
-        if (collider != null)
+        if (collider != null && !keepCollider)
             DestroyObject(collider);
         primitive.GetComponent<MeshRenderer>().sharedMaterial = generatedMaterial;
         return primitive;
