@@ -1,22 +1,30 @@
 using System.Collections;
+using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
+[ExecuteAlways]
 public sealed class TitleSplashController : MonoBehaviour
 {
     private const float MaximumFadeDeltaPerFrame = 1f / 30f;
 
     [SerializeField] private GameObject primaryLogo;
-    [SerializeField] private GameObject versionLabel;
     [SerializeField] private GameObject partnerLogos;
 
     [Header("Primary Logo (logo2d)")]
     [SerializeField, Min(1)] private int prewarmFrames = 3;
     [SerializeField, Min(0f)] private float initialDelay = 1f;
     [SerializeField, Min(0f)] private float primaryFadeInDuration = 0.6f;
-    [SerializeField, Min(0f)] private float versionDelay = 0.3f;
-    [SerializeField, Min(0f)] private float versionFadeInDuration = 0.3f;
+    [SerializeField, Min(0f)] private float versionDelay = 0.25f;
     [SerializeField, Min(0f)] private float partnerLogoDelay = 0.3f;
+
+    [Header("Version (Top Right)")]
+    [SerializeField, Min(0f)] private float versionFadeInDuration = 0.5f;
+    [SerializeField] private string versionPrefix = "v";
+    [SerializeField, Min(0.1f)] private float versionFontSize = 3f;
+    [SerializeField] private Vector2 versionOffset = new(-2f, -2f);
+    [SerializeField] private Vector2 versionSize = new(36f, 8f);
+    [SerializeField, Range(0f, 1f)] private float versionOpacity = 0.85f;
 
     [Header("Partner Logos (Logos)")]
     [SerializeField, Min(0f)] private float partnerFadeInDuration = 0.6f;
@@ -33,7 +41,7 @@ public sealed class TitleSplashController : MonoBehaviour
     private void Awake()
     {
         primaryGroup = GetOrAddCanvasGroup(primaryLogo);
-        versionGroup = GetOrAddCanvasGroup(versionLabel);
+        versionGroup = EnsureVersionLabel();
         partnerGroup = GetOrAddCanvasGroup(partnerLogos);
 
         SetAlpha(primaryGroup, 0f);
@@ -43,6 +51,9 @@ public sealed class TitleSplashController : MonoBehaviour
 
     private IEnumerator Start()
     {
+        if (!Application.isPlaying)
+            yield break;
+
         Canvas.ForceUpdateCanvases();
         for (int frame = 0; frame < prewarmFrames; frame++)
             yield return new WaitForEndOfFrame();
@@ -55,6 +66,8 @@ public sealed class TitleSplashController : MonoBehaviour
 
         yield return Fade(partnerGroup, 0f, 1f, partnerFadeInDuration);
         yield return Wait(visibleDuration);
+        if (AudioManager.Instance != null)
+            AudioManager.Instance.FadeOutBgm(fadeOutDuration);
         yield return FadeOutLogos();
 
         if (!Application.CanStreamedLevelBeLoaded(nextSceneName))
@@ -91,6 +104,57 @@ public sealed class TitleSplashController : MonoBehaviour
         SetAlpha(primaryGroup, 0f);
         SetAlpha(versionGroup, 0f);
         SetAlpha(partnerGroup, 0f);
+    }
+
+    private CanvasGroup EnsureVersionLabel()
+    {
+        Transform existing = transform.Find("Version");
+        bool isNew = existing == null;
+        GameObject versionObject = isNew
+            ? new GameObject("Version", typeof(RectTransform))
+            : existing.gameObject;
+        versionObject.layer = gameObject.layer;
+
+        RectTransform rect = versionObject.GetComponent<RectTransform>();
+        if (rect == null)
+        {
+            Debug.LogError("Version UI object requires a RectTransform.", versionObject);
+            return null;
+        }
+        if (isNew)
+        {
+            rect.SetParent(transform, false);
+            rect.anchorMin = Vector2.one;
+            rect.anchorMax = Vector2.one;
+            rect.pivot = Vector2.one;
+            rect.anchoredPosition = versionOffset;
+            rect.sizeDelta = versionSize;
+        }
+
+        TextMeshProUGUI text = versionObject.GetComponent<TextMeshProUGUI>();
+        if (text == null)
+            text = versionObject.AddComponent<TextMeshProUGUI>();
+        text.text = versionPrefix + Application.version;
+        text.fontSize = versionFontSize;
+        text.font = TMP_Settings.defaultFontAsset;
+        text.color = Color.white;
+        text.alpha = versionOpacity;
+        text.alignment = TextAlignmentOptions.TopRight;
+        text.raycastTarget = false;
+        text.enableWordWrapping = false;
+
+        CanvasGroup group = versionObject.GetComponent<CanvasGroup>();
+        if (group == null)
+            group = versionObject.AddComponent<CanvasGroup>();
+
+#if UNITY_EDITOR
+        if (isNew)
+        {
+            UnityEditor.Undo.RegisterCreatedObjectUndo(versionObject, "Create version label");
+            UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(gameObject.scene);
+        }
+#endif
+        return group;
     }
 
     private static CanvasGroup GetOrAddCanvasGroup(GameObject target)

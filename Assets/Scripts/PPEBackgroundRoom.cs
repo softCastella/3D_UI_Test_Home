@@ -1,6 +1,4 @@
 using UnityEngine;
-using UnityEngine.Rendering;
-using UnityEngine.Rendering.Universal;
 
 /// <summary>
 /// Builds the PPE room shell from dedicated wall, floor, and ceiling references.
@@ -22,38 +20,73 @@ public sealed class PPEBackgroundRoom : MonoBehaviour
     [SerializeField] private Color floorColor = Color.white;
     [SerializeField] private Color ceilingColor = Color.white;
     [SerializeField] private Color wallColor = Color.white;
+    [Header("Room Lighting")]
+    [SerializeField, Range(0f, 2f)] private float roomBrightness = 1f;
+    [Header("Door Appearance")]
+    [SerializeField] private Color doorColor = new(0.72f, 0.72f, 0.72f, 1f);
     [SerializeField, Min(0.5f)] private float doorHeight = 2.3f;
     [SerializeField, Min(0.01f)] private float doorWallInset = 0.08f;
-    [Header("Ceiling Lights")]
-    [SerializeField] private Vector2 frontLightPosition = new(0f, 5.2f);
-    [SerializeField] private Vector2 rearLightPosition = new(0f, -5.2f);
-    [SerializeField] private Vector2 ceilingLightPanelSize = new(2.4f, 2.4f);
-    [SerializeField] private Vector3 ceilingLightEulerAngles = new(90f, 0f, 0f);
 
     private const string GeneratedRootName = "Generated Image Room";
-    private const float RearCeilingInset = 0.35f;
 
     private void OnEnable()
     {
-        BuildRoom();
+        Transform generatedRoot = transform.Find(GeneratedRootName);
+        if (generatedRoot == null)
+        {
+            BuildRoom();
+            return;
+        }
+
+        SetHideFlagsRecursively(generatedRoot, HideFlags.None);
+        RefreshRoomMaterials(generatedRoot);
+        CreateImageDoor(transform);
+#if UNITY_EDITOR
+        if (!Application.isPlaying)
+            EnsurePersistentDoorMaterial();
+#endif
     }
 
-    private void Start()
+    private void OnValidate()
     {
-        EnableCameraPostProcessing();
+        ApplyRoomBrightness();
+    }
+
+    private void RefreshRoomMaterials(Transform root)
+    {
+        Material wallMaterial = CreateMaterial("PPE Wall", wallColor * roomBrightness, wallTexture);
+        Material floorMaterial = CreateMaterial("PPE Floor", floorColor * roomBrightness, floorTexture);
+        Material ceilingMaterial = CreateMaterial(
+            "PPE Ceiling", ceilingColor * roomBrightness, ceilingTexture);
+
+        AssignMaterial(root, "Front Wall", wallMaterial);
+        AssignMaterial(root, "Rear Wall", wallMaterial);
+        AssignMaterial(root, "Left Wall", wallMaterial);
+        AssignMaterial(root, "Right Wall", wallMaterial);
+        AssignMaterial(root, "Floor", floorMaterial);
+        AssignMaterial(root, "Ceiling", ceilingMaterial);
+    }
+
+    private static void AssignMaterial(Transform root, string objectName, Material material)
+    {
+        Transform child = root.Find(objectName);
+        if (child != null && child.TryGetComponent(out MeshRenderer renderer))
+            renderer.sharedMaterial = material;
+    }
+
+    private static void SetHideFlagsRecursively(Transform target, HideFlags flags)
+    {
+        target.gameObject.hideFlags = flags;
+        foreach (Transform child in target)
+            SetHideFlagsRecursively(child, flags);
     }
 
     [ContextMenu("Rebuild Room")]
     public void BuildRoom()
     {
-        EnableCameraPostProcessing();
-
         Transform previous = transform.Find(GeneratedRootName);
         if (previous != null)
         {
-            PreserveSceneLight(previous, "Ceiling Light Front");
-            PreserveSceneLight(previous, "Ceiling Light Rear");
-
             if (Application.isPlaying)
                 Destroy(previous.gameObject);
             else
@@ -62,14 +95,11 @@ public sealed class PPEBackgroundRoom : MonoBehaviour
 
         GameObject root = new(GeneratedRootName);
         root.transform.SetParent(transform, false);
-        if (!Application.isPlaying)
-            root.hideFlags = HideFlags.DontSaveInEditor;
 
-        CreateRoomVolume(root);
-
-        Material wallMaterial = CreateMaterial("PPE Wall", wallColor, wallTexture, true, 0.02f);
-        Material floorMaterial = CreateMaterial("PPE Floor", floorColor, floorTexture, true, 0.02f);
-        Material ceilingMaterial = CreateMaterial("PPE Ceiling", ceilingColor, ceilingTexture, true, 0.35f);
+        Material wallMaterial = CreateMaterial("PPE Wall", wallColor * roomBrightness, wallTexture);
+        Material floorMaterial = CreateMaterial("PPE Floor", floorColor * roomBrightness, floorTexture);
+        Material ceilingMaterial = CreateMaterial(
+            "PPE Ceiling", ceilingColor * roomBrightness, ceilingTexture);
 
         CreateWall(root.transform, "Front Wall", new Vector3(0f, roomHeight * 0.5f, roomDepth * 0.5f),
             new Vector3(0f, 180f, 0f), new Vector2(roomWidth, roomHeight), wallMaterial);
@@ -82,13 +112,12 @@ public sealed class PPEBackgroundRoom : MonoBehaviour
 
         CreateSurface(root.transform, "Floor", new Vector3(0f, -0.03f, 0f),
             new Vector3(roomWidth, 0.05f, roomDepth), floorMaterial);
-        CreateSurface(root.transform, "Ceiling",
-            new Vector3(0f, roomHeight + 0.03f, RearCeilingInset * 0.5f),
-            new Vector3(roomWidth, 0.05f, roomDepth - RearCeilingInset), ceilingMaterial);
+        CreateSurface(root.transform, "Ceiling", new Vector3(0f, roomHeight + 0.03f, 0f),
+            new Vector3(roomWidth, 0.05f, roomDepth), ceilingMaterial);
 
         // Match the two luminaires painted into the ceiling texture.
-        CreateCeilingLight(transform, "Ceiling Light Front", frontLightPosition, 800f);
-        CreateCeilingLight(transform, "Ceiling Light Rear", rearLightPosition, 1000f);
+        CreateCeilingLight(root.transform, "Ceiling Light Front", 2.1f);
+        CreateCeilingLight(root.transform, "Ceiling Light Rear", -2.1f);
         // The image door lives outside Generated Image Room so rebuilding the room
         // never deletes or resets a scene-authored door Transform.
         CreateImageDoor(transform);
@@ -97,11 +126,35 @@ public sealed class PPEBackgroundRoom : MonoBehaviour
         // from the component context menu when an automatic reset is explicitly wanted.
     }
 
-    private static void EnableCameraPostProcessing()
+    private void ApplyRoomBrightness()
     {
-        Camera camera = Camera.main;
-        if (camera != null && camera.TryGetComponent(out UniversalAdditionalCameraData cameraData))
-            cameraData.renderPostProcessing = true;
+        Transform root = transform.Find(GeneratedRootName);
+        if (root == null)
+            return;
+
+        ApplySurfaceBrightness(root, "Front Wall", wallColor);
+        ApplySurfaceBrightness(root, "Rear Wall", wallColor);
+        ApplySurfaceBrightness(root, "Left Wall", wallColor);
+        ApplySurfaceBrightness(root, "Right Wall", wallColor);
+        ApplySurfaceBrightness(root, "Floor", floorColor);
+        ApplySurfaceBrightness(root, "Ceiling", ceilingColor);
+    }
+
+    private void ApplySurfaceBrightness(Transform root, string objectName, Color baseColor)
+    {
+        Transform surface = root.Find(objectName);
+        if (surface == null || !surface.TryGetComponent(out MeshRenderer renderer))
+            return;
+
+        Material material = renderer.sharedMaterial;
+        if (material == null)
+            return;
+
+        Color adjustedColor = baseColor * roomBrightness;
+        if (material.HasProperty("_BaseColor"))
+            material.SetColor("_BaseColor", adjustedColor);
+        else
+            material.color = adjustedColor;
     }
 
     private void CreateImageDoor(Transform parent)
@@ -135,24 +188,23 @@ public sealed class PPEBackgroundRoom : MonoBehaviour
             imageDoor.transform.localScale = new Vector3(imageHeight * imageAspect, imageHeight, 1f);
         }
 
-        Shader doorShader = doorCutoutShader;
-        if (doorShader == null)
-            doorShader = Shader.Find("Universal Render Pipeline/Unlit");
-        Material material = new(doorShader) { name = "PPE Image Door" };
-        material.hideFlags = HideFlags.DontSave;
-        material.SetTexture("_BaseMap", doorTexture);
-        material.SetColor("_BaseColor", new Color(0.72f, 0.72f, 0.72f, 1f));
-        material.SetFloat("_Cutoff", 0.9f);
-        imageDoor.GetComponent<MeshRenderer>().sharedMaterial = material;
-
-        Transform previousGlass = imageDoor.transform.Find("Door Window Glass");
-        if (previousGlass != null)
+        MeshRenderer doorRenderer = imageDoor.GetComponent<MeshRenderer>();
+        Material currentMaterial = doorRenderer.sharedMaterial;
+        bool materialMissing = currentMaterial == null || currentMaterial.shader == null
+            || currentMaterial.shader.name == "Hidden/InternalErrorShader";
+        if (materialMissing)
         {
-            if (Application.isPlaying)
-                Destroy(previousGlass.gameObject);
-            else
-                DestroyImmediate(previousGlass.gameObject);
+            Shader doorShader = doorCutoutShader;
+            if (doorShader == null)
+                doorShader = Shader.Find("Universal Render Pipeline/Unlit");
+            Material material = new(doorShader) { name = "PPE Image Door" };
+            material.hideFlags = HideFlags.DontSave;
+            material.SetTexture("_BaseMap", doorTexture);
+            material.SetColor("_BaseColor", doorColor);
+            material.SetFloat("_Cutoff", 0.9f);
+            doorRenderer.sharedMaterial = material;
         }
+
         CreateDoorGlass(imageDoor.transform);
 
         Collider collider = imageDoor.GetComponent<Collider>();
@@ -162,43 +214,66 @@ public sealed class PPEBackgroundRoom : MonoBehaviour
             DestroyImmediate(collider);
     }
 
-    private static void CreateDoorGlass(Transform door)
+#if UNITY_EDITOR
+    private void EnsurePersistentDoorMaterial()
     {
-        GameObject glass = new("Door Window Glass");
-        glass.name = "Door Window Glass";
-        glass.transform.SetParent(door, false);
-        glass.transform.localPosition = new Vector3(0.002f, -0.002f, -0.003f);
+        Transform door = FindSceneObject("PPE Room Door Image");
+        if (door == null || !door.TryGetComponent(out MeshRenderer renderer)
+            || renderer.sharedMaterial == null)
+            return;
 
-        const float halfWidth = 0.243f;
-        const float halfHeight = 0.39f;
-        const float cornerX = 0.042f;
-        const float cornerY = 0.021f;
-        Vector3[] vertices =
+        const string folder = "Assets/Generated/PPE";
+        const string assetPath = folder + "/PPE_Room_Door.mat";
+        Material savedMaterial = UnityEditor.AssetDatabase.LoadAssetAtPath<Material>(assetPath);
+        if (savedMaterial == null)
         {
-            new(-halfWidth + cornerX, halfHeight, 0f),
-            new(halfWidth - cornerX, halfHeight, 0f),
-            new(halfWidth, halfHeight - cornerY, 0f),
-            new(halfWidth, -halfHeight + cornerY, 0f),
-            new(halfWidth - cornerX, -halfHeight, 0f),
-            new(-halfWidth + cornerX, -halfHeight, 0f),
-            new(-halfWidth, -halfHeight + cornerY, 0f),
-            new(-halfWidth, halfHeight - cornerY, 0f),
-            Vector3.zero
-        };
-        int[] triangles =
-        {
-            8, 0, 1, 8, 1, 2, 8, 2, 3, 8, 3, 4,
-            8, 4, 5, 8, 5, 6, 8, 6, 7, 8, 7, 0
-        };
+            if (!UnityEditor.AssetDatabase.IsValidFolder("Assets/Generated"))
+                UnityEditor.AssetDatabase.CreateFolder("Assets", "Generated");
+            if (!UnityEditor.AssetDatabase.IsValidFolder(folder))
+                UnityEditor.AssetDatabase.CreateFolder("Assets/Generated", "PPE");
 
-        Mesh mesh = new() { name = "PPE Door Octagonal Glass" };
-        mesh.hideFlags = HideFlags.DontSave;
-        mesh.vertices = vertices;
-        mesh.triangles = triangles;
-        mesh.RecalculateNormals();
-        mesh.RecalculateBounds();
-        glass.AddComponent<MeshFilter>().sharedMesh = mesh;
-        MeshRenderer renderer = glass.AddComponent<MeshRenderer>();
+            savedMaterial = new Material(renderer.sharedMaterial)
+            {
+                name = "PPE_Room_Door",
+                hideFlags = HideFlags.None
+            };
+            UnityEditor.AssetDatabase.CreateAsset(savedMaterial, assetPath);
+            UnityEditor.AssetDatabase.SaveAssets();
+        }
+
+        if (renderer.sharedMaterial != savedMaterial)
+        {
+            renderer.sharedMaterial = savedMaterial;
+            UnityEditor.EditorUtility.SetDirty(renderer);
+            UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(gameObject.scene);
+        }
+    }
+#endif
+
+    private void CreateDoorGlass(Transform door)
+    {
+        Transform existingGlass = door.Find("Door Window Glass");
+        bool isNewGlass = existingGlass == null;
+        GameObject glass = isNewGlass
+            ? new GameObject("Door Window Glass")
+            : existingGlass.gameObject;
+
+        if (isNewGlass)
+        {
+            glass.transform.SetParent(door, false);
+            glass.transform.localPosition = new Vector3(0.002f, -0.002f, -0.003f);
+        }
+
+        if (!glass.TryGetComponent(out MeshFilter _))
+            glass.AddComponent<MeshFilter>();
+        MeshRenderer renderer = glass.TryGetComponent(out MeshRenderer existingRenderer)
+            ? existingRenderer
+            : glass.AddComponent<MeshRenderer>();
+        if (!glass.TryGetComponent(out DoorWindowGlass glassSize))
+        {
+            glassSize = glass.AddComponent<DoorWindowGlass>();
+            glassSize.Configure(0.486f, 0.78f);
+        }
 
         Material material = CreateMaterial("PPE Door Glass",
             new Color(0.52f, 0.76f, 0.86f, 0.28f), null);
@@ -214,147 +289,21 @@ public sealed class PPEBackgroundRoom : MonoBehaviour
         renderer.sharedMaterial = material;
     }
 
-    private void CreateCeilingLight(Transform parent, string objectName, Vector2 floorPosition,
-        float intensity)
+    private void CreateCeilingLight(Transform parent, string objectName, float zPosition)
     {
-        Transform existing = parent.Find(objectName);
-        GameObject lightObject = existing == null ? new GameObject(objectName) : existing.gameObject;
+        GameObject lightObject = new(objectName);
         lightObject.transform.SetParent(parent, false);
-        lightObject.transform.localPosition = new Vector3(
-            floorPosition.x, roomHeight - 0.08f, floorPosition.y);
-        lightObject.transform.localRotation = Quaternion.Euler(ceilingLightEulerAngles);
-        lightObject.transform.localScale = Vector3.one;
+        lightObject.transform.localPosition = new Vector3(0f, roomHeight - 0.08f, zPosition);
+        lightObject.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
 
-        Transform panelTransform = lightObject.transform.Find("Emissive Panel");
-        if (panelTransform == null)
-        {
-            GameObject panel = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            panel.name = "Emissive Panel";
-            panel.transform.SetParent(lightObject.transform, false);
-            panel.transform.localPosition = new Vector3(0f, 0f, 0.03f);
-            panelTransform = panel.transform;
-
-            Collider panelCollider = panel.GetComponent<Collider>();
-            if (Application.isPlaying)
-                Destroy(panelCollider);
-            else
-                DestroyImmediate(panelCollider);
-        }
-
-        panelTransform.localPosition = new Vector3(0f, 0f, 0.03f);
-        panelTransform.localRotation = Quaternion.identity;
-        panelTransform.localScale = new Vector3(
-            ceilingLightPanelSize.x, ceilingLightPanelSize.y, 0.04f);
-        panelTransform.GetComponent<MeshRenderer>().sharedMaterial = CreateEmissiveMaterial();
-        CreateOrUpdatePanelBorder(lightObject.transform, panelTransform);
-
-        Light ceilingLight = lightObject.GetComponent<Light>();
-        if (ceilingLight == null)
-            ceilingLight = lightObject.AddComponent<Light>();
-
-        ceilingLight.enabled = true;
+        Light ceilingLight = lightObject.AddComponent<Light>();
         ceilingLight.type = LightType.Spot;
         ceilingLight.color = new Color(1f, 0.96f, 0.88f);
-        ceilingLight.intensity = intensity;
+        ceilingLight.intensity = zPosition > 0f ? 180f : 300f;
         ceilingLight.range = roomHeight + 2f;
         ceilingLight.spotAngle = 90f;
         ceilingLight.innerSpotAngle = 55f;
         ceilingLight.shadows = LightShadows.None;
-    }
-
-    private static void CreateOrUpdatePanelBorder(Transform lightTransform, Transform panelTransform)
-    {
-        const string borderName = "Emissive Panel Border";
-        Transform borderTransform = lightTransform.Find(borderName);
-        if (borderTransform == null)
-        {
-            GameObject border = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            border.name = borderName;
-            border.transform.SetParent(lightTransform, false);
-            borderTransform = border.transform;
-
-            Collider borderCollider = border.GetComponent<Collider>();
-            if (Application.isPlaying)
-                Destroy(borderCollider);
-            else
-                DestroyImmediate(borderCollider);
-        }
-
-        Vector3 panelPosition = panelTransform.localPosition;
-        Vector3 panelScale = panelTransform.localScale;
-        borderTransform.localPosition = new Vector3(
-            panelPosition.x, panelPosition.y, panelPosition.z - 0.025f);
-        borderTransform.localRotation = panelTransform.localRotation;
-        borderTransform.localScale = new Vector3(
-            panelScale.x + 0.18f, panelScale.y + 0.18f, 0.035f);
-        borderTransform.GetComponent<MeshRenderer>().sharedMaterial = CreatePanelBorderMaterial();
-    }
-
-    private void PreserveSceneLight(Transform generatedRoot, string objectName)
-    {
-        Transform lightTransform = generatedRoot.Find(objectName);
-        if (lightTransform == null || transform.Find(objectName) != null)
-            return;
-
-        lightTransform.SetParent(transform, true);
-        SetHideFlagsRecursively(lightTransform, HideFlags.None);
-    }
-
-    private static void SetHideFlagsRecursively(Transform target, HideFlags flags)
-    {
-        target.gameObject.hideFlags = flags;
-        foreach (Transform child in target)
-            SetHideFlagsRecursively(child, flags);
-    }
-
-    private static void CreateRoomVolume(GameObject root)
-    {
-        Volume volume = root.AddComponent<Volume>();
-        volume.isGlobal = true;
-        volume.priority = 10f;
-
-        VolumeProfile profile = ScriptableObject.CreateInstance<VolumeProfile>();
-        profile.hideFlags = HideFlags.DontSave;
-        Bloom bloom = profile.Add<Bloom>();
-        bloom.threshold.Override(0.9f);
-        bloom.intensity.Override(0.18f);
-        bloom.scatter.Override(0.55f);
-        bloom.highQualityFiltering.Override(false);
-        volume.sharedProfile = profile;
-    }
-
-    private static Material CreateEmissiveMaterial()
-    {
-        Shader shader = Shader.Find("Universal Render Pipeline/Lit");
-        if (shader == null)
-            shader = Shader.Find("Universal Render Pipeline/Unlit");
-
-        Material material = new(shader) { name = "PPE Ceiling Emission" };
-        material.hideFlags = HideFlags.DontSave;
-        Color baseColor = new(1f, 0.94f, 0.78f, 1f);
-        material.SetColor("_BaseColor", baseColor);
-        if (material.HasProperty("_EmissionColor"))
-        {
-            material.EnableKeyword("_EMISSION");
-            material.SetColor("_EmissionColor", baseColor * 4f);
-        }
-        return material;
-    }
-
-    private static Material CreatePanelBorderMaterial()
-    {
-        Shader shader = Shader.Find("Universal Render Pipeline/Unlit");
-        if (shader == null)
-            shader = Shader.Find("Unlit/Color");
-
-        Material material = new(shader) { name = "PPE Ceiling Light Border" };
-        material.hideFlags = HideFlags.DontSave;
-        Color borderColor = new(0.12f, 0.13f, 0.14f, 1f);
-        if (material.HasProperty("_BaseColor"))
-            material.SetColor("_BaseColor", borderColor);
-        else
-            material.color = borderColor;
-        return material;
     }
 
     [ContextMenu("Position PPE Room Door")]
@@ -416,12 +365,9 @@ public sealed class PPEBackgroundRoom : MonoBehaviour
         return true;
     }
 
-    private static Material CreateMaterial(string materialName, Color color, Texture texture,
-        bool useLitShader = false, float emissionStrength = 0f)
+    private static Material CreateMaterial(string materialName, Color color, Texture texture)
     {
-        Shader shader = Shader.Find(useLitShader
-            ? "Universal Render Pipeline/Lit"
-            : "Universal Render Pipeline/Unlit");
+        Shader shader = Shader.Find("Universal Render Pipeline/Unlit");
         if (shader == null)
             shader = Shader.Find("Unlit/Texture");
 
@@ -431,22 +377,6 @@ public sealed class PPEBackgroundRoom : MonoBehaviour
             material.SetColor("_BaseColor", color);
         else
             material.color = color;
-        if (useLitShader)
-        {
-            if (material.HasProperty("_Metallic"))
-                material.SetFloat("_Metallic", 0f);
-            if (material.HasProperty("_Smoothness"))
-                material.SetFloat("_Smoothness", 0.05f);
-            if (material.HasProperty("_EnvironmentReflections"))
-                material.SetFloat("_EnvironmentReflections", 0f);
-            if (material.HasProperty("_SpecularHighlights"))
-                material.SetFloat("_SpecularHighlights", 0f);
-            if (emissionStrength > 0f && material.HasProperty("_EmissionColor"))
-            {
-                material.EnableKeyword("_EMISSION");
-                material.SetColor("_EmissionColor", color * emissionStrength);
-            }
-        }
         if (material.HasProperty("_Cull"))
             material.SetFloat("_Cull", 0f);
         material.mainTexture = texture;
