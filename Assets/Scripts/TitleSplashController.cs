@@ -7,12 +7,15 @@ public sealed class TitleSplashController : MonoBehaviour
     private const float MaximumFadeDeltaPerFrame = 1f / 30f;
 
     [SerializeField] private GameObject primaryLogo;
+    [SerializeField] private GameObject versionLabel;
     [SerializeField] private GameObject partnerLogos;
 
     [Header("Primary Logo (logo2d)")]
     [SerializeField, Min(1)] private int prewarmFrames = 3;
     [SerializeField, Min(0f)] private float initialDelay = 1f;
     [SerializeField, Min(0f)] private float primaryFadeInDuration = 0.6f;
+    [SerializeField, Min(0f)] private float versionDelay = 0.3f;
+    [SerializeField, Min(0f)] private float versionFadeInDuration = 0.3f;
     [SerializeField, Min(0f)] private float partnerLogoDelay = 0.3f;
 
     [Header("Partner Logos (Logos)")]
@@ -24,14 +27,17 @@ public sealed class TitleSplashController : MonoBehaviour
     [SerializeField] private string nextSceneName = "2_Intro";
 
     private CanvasGroup primaryGroup;
+    private CanvasGroup versionGroup;
     private CanvasGroup partnerGroup;
 
     private void Awake()
     {
         primaryGroup = GetOrAddCanvasGroup(primaryLogo);
+        versionGroup = GetOrAddCanvasGroup(versionLabel);
         partnerGroup = GetOrAddCanvasGroup(partnerLogos);
 
         SetAlpha(primaryGroup, 0f);
+        SetAlpha(versionGroup, 0f);
         SetAlpha(partnerGroup, 0f);
     }
 
@@ -43,6 +49,8 @@ public sealed class TitleSplashController : MonoBehaviour
 
         yield return Wait(initialDelay);
         yield return Fade(primaryGroup, 0f, 1f, primaryFadeInDuration);
+        yield return Wait(versionDelay);
+        yield return Fade(versionGroup, 0f, 1f, versionFadeInDuration);
         yield return Wait(partnerLogoDelay);
 
         yield return Fade(partnerGroup, 0f, 1f, partnerFadeInDuration);
@@ -64,6 +72,7 @@ public sealed class TitleSplashController : MonoBehaviour
         if (fadeOutDuration <= 0f)
         {
             SetAlpha(primaryGroup, 0f);
+            SetAlpha(versionGroup, 0f);
             SetAlpha(partnerGroup, 0f);
             yield break;
         }
@@ -74,11 +83,13 @@ public sealed class TitleSplashController : MonoBehaviour
             float progress = Mathf.Clamp01(elapsed / fadeOutDuration);
             float alpha = 1f - Mathf.SmoothStep(0f, 1f, progress);
             SetAlpha(primaryGroup, alpha);
+            SetAlpha(versionGroup, alpha);
             SetAlpha(partnerGroup, alpha);
             yield return null;
         }
 
         SetAlpha(primaryGroup, 0f);
+        SetAlpha(versionGroup, 0f);
         SetAlpha(partnerGroup, 0f);
     }
 
