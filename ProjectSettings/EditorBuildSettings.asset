@@ -15,9 +15,6 @@ EditorBuildSettings:
     path: Assets/Scenes/2_Intro.unity
     guid: 7def8ae4c77d1fd43affdc27146a489f
   - enabled: 1
-    path: Assets/Scenes/3_PPE_Room.unity
-    guid: edf49974917a8e44fb20478d5a677a54
-  - enabled: 1
     path: Assets/Scenes/Confined Space Scene_half.unity
     guid: 99c9720ab356a0642a771bea13969a05
   m_configObjects:

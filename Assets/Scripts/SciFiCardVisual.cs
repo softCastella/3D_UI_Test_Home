@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-[ExecuteAlways]
 public sealed class SciFiCardVisual : MonoBehaviour
 {
     [Header("Shape")]
@@ -72,10 +71,6 @@ public sealed class SciFiCardVisual : MonoBehaviour
     public MeshRenderer frameRenderer;
     public MeshRenderer[] cornerMarkerRenderers = new MeshRenderer[8];
     public BoxCollider interactionCollider;
-
-    void Awake() => Apply();
-
-    void OnValidate() => Apply();
 
     public void Apply()
     {
