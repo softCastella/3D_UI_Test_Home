@@ -117,3 +117,39 @@
 - Unity Editor의 계층 생성 결과와 씬 저장 여부는 추가 확인이 필요하다.
 - Quest 실기기 렌더링과 손 상호작용은 미검증 상태다.
 
+## BUG-007: 시나리오 상세 모달 오버레이 크기와 Quest 컨트롤러 입력
+
+### 증상
+
+- 시나리오 카드를 선택해도 상세 모달 기능이 없었다.
+- 검정 오버레이가 기존 XR UI Canvas 크기 `1200 × 600`에만 맞춰져 Quest 시야 전체를 덮지 못했다.
+- 생성 도구가 기존 모달을 보호하도록 설계되어 있어 스크립트 Refresh만으로 오버레이 크기가 변경되지 않았다.
+- PPE Room XR Origin에 좌우 컨트롤러 인터랙터가 없어 Quest 컨트롤러로 카드와 모달 버튼을 선택할 수 없었다.
+
+### 원인
+
+- 모달 루트가 Canvas Stretch 앵커와 `SizeDelta (0, 0)`을 사용해 부모 Canvas 범위에 제한됐다.
+- 최초 생성 이후에는 인스펙터/씬 직렬화값을 최종 기준으로 사용하기 위해 생성 도구가 기존 오브젝트를 덮어쓰지 않는다.
+- 씬에 `XRUIInputModule`과 `TrackedDeviceGraphicRaycaster`는 있었지만 컨트롤러 측 `NearFarInteractor`, `XRInteractionManager`, 입력 액션 활성화 구성이 빠져 있었다.
+- 기존 `ScenarioSelectionHud`가 `RemoveAllListeners()`를 사용해 인스펙터에 연결된 이벤트까지 제거할 수 있었다.
+
+### 조치
+
+- `ScenarioDetailModal`을 추가해 카드별 번호, 제목, 설명, 훈련 선택 이벤트를 씬 직렬화값으로 관리한다.
+- `돌아가기` 버튼은 `ScenarioDetailModal.Hide()`를 호출해 모달 루트를 비활성화한다.
+- 우측 상단 X 버튼은 추가하지 않았다.
+- 검정 오버레이 RectTransform을 씬에서 직접 `4000 × 3000`, 중앙 앵커로 저장해 Quest 시야를 덮도록 확장했다.
+- 오버레이 Image의 Raycast Target을 유지해 모달 뒤 카드 입력을 차단한다.
+- `Camera Offset` 아래에 XRI Starter Assets의 좌우 `NearFarInteractor` 프리팹을 연결했다.
+- XR Origin에 `XRInteractionManager`와 `InputActionManager`를 추가하고 `XRI Default Input Actions`를 직렬화했다.
+- 런타임은 자신이 추가한 리스너만 추적해 해제하며 인스펙터 이벤트를 삭제하지 않도록 변경했다.
+- 카드 그룹 에디터 도구의 씬 열기/스크립트 리로드 자동 실행을 제거해 플레이 전후 인스펙터 값을 덮어쓰지 않도록 했다.
+
+### 검증
+
+- `3_PPE_Room.unity`에 오버레이 `4000 × 3000` 값이 직렬화된 것을 확인했다.
+- 좌우 `NearFarInteractor`, `XRInteractionManager`, `XRI Default Input Actions` 참조가 씬에 직렬화된 것을 확인했다.
+- Runtime 및 Editor Assembly 빌드 오류 0개를 확인했다.
+- [ ] Quest 실기기에서 오버레이의 전체 시야 커버 범위 확인
+- [ ] 좌우 컨트롤러 레이, 트리거 선택, 버튼 호버와 햅틱 확인
+- [ ] `돌아가기` 선택 시 모달이 닫히고 카드 선택 화면으로 복귀하는지 확인

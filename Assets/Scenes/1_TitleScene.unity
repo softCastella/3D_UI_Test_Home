@@ -374,7 +374,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Unity.TextMeshPro::TMPro.TextMeshProUGUI
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_Color: {r: 0.24528301, g: 0.24528301, b: 0.24528301, a: 0.85}
   m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -390,8 +390,8 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 3640655872
-  m_fontColor: {r: 0, g: 0, b: 0, a: 0.85}
+    rgba: 3644800831
+  m_fontColor: {r: 0.24528301, g: 0.24528301, b: 0.24528301, a: 0.85}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -611,6 +611,7 @@ MonoBehaviour:
   versionFontSize: 3
   versionOffset: {x: -2, y: -2}
   versionSize: {x: 36, y: 8}
+  versionTextColor: {r: 0.24528301, g: 0.24528301, b: 0.24528301, a: 1}
   versionOpacity: 0.85
   partnerFadeInDuration: 0.6
   visibleDuration: 1.5
