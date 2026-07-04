@@ -24,6 +24,7 @@ public sealed class TitleSplashController : MonoBehaviour
     [SerializeField, Min(0.1f)] private float versionFontSize = 3f;
     [SerializeField] private Vector2 versionOffset = new(-2f, -2f);
     [SerializeField] private Vector2 versionSize = new(36f, 8f);
+    [SerializeField] private Color versionTextColor = new(0.24528301f, 0.24528301f, 0.24528301f, 1f);
     [SerializeField, Range(0f, 1f)] private float versionOpacity = 0.85f;
 
     [Header("Partner Logos (Logos)")]
@@ -137,7 +138,7 @@ public sealed class TitleSplashController : MonoBehaviour
         text.text = versionPrefix + Application.version;
         text.fontSize = versionFontSize;
         text.font = TMP_Settings.defaultFontAsset;
-        text.color = Color.white;
+        text.color = versionTextColor;
         text.alpha = versionOpacity;
         text.alignment = TextAlignmentOptions.TopRight;
         text.raycastTarget = false;

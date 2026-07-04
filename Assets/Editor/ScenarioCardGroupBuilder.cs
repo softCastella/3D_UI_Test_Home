@@ -1,10 +1,8 @@
 using UnityEditor;
-using UnityEditor.Callbacks;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-[InitializeOnLoad]
 internal static class ScenarioCardGroupBuilder
 {
     private const string TargetSceneName = "3_PPE_Room";
@@ -12,38 +10,10 @@ internal static class ScenarioCardGroupBuilder
     private const string LayoutMarkerName = "__HorizontalCardGroups_v3";
     private const string Card3GroupName = "ScenarioCard3_Group";
 
-    static ScenarioCardGroupBuilder()
-    {
-        EditorSceneManager.sceneOpened -= OnSceneOpened;
-        EditorSceneManager.sceneOpened += OnSceneOpened;
-        EditorApplication.delayCall += BuildInAllLoadedScenes;
-    }
-
-    [DidReloadScripts]
-    private static void OnScriptsReloaded()
-    {
-        EditorApplication.delayCall += BuildInAllLoadedScenes;
-    }
-
-    private static void OnSceneOpened(Scene scene, OpenSceneMode mode)
-    {
-        if (scene.name == TargetSceneName)
-            EditorApplication.delayCall += BuildInAllLoadedScenes;
-    }
-
     [MenuItem("Tools/Scenario HUD/Create Overlapping Card Groups")]
     private static void BuildGroupsOnce()
     {
         BuildInScene(SceneManager.GetActiveScene());
-    }
-
-    private static void BuildInAllLoadedScenes()
-    {
-        if (EditorApplication.isPlayingOrWillChangePlaymode)
-            return;
-
-        for (int index = 0; index < SceneManager.sceneCount; index++)
-            BuildInScene(SceneManager.GetSceneAt(index));
     }
 
     private static void BuildInScene(Scene scene)

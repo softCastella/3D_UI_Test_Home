@@ -73,3 +73,31 @@
 - [ ] 카드 그룹 활성/비활성 비교 및 손 직접 상호작용 확인
 - [ ] `ScenarioCard3_Group (1)`의 실제 반투명 표현 개선
 
+## 시나리오 상세 모달 및 Quest 입력 추가
+
+- `imgForCodex/시나리오상세 모달.png`를 기준으로 시나리오 카드 선택 후 표시되는 상세 설명 모달을 구성했다.
+- 모달은 시나리오 번호, 제목, 본문, `훈련 선택`, `돌아가기` 버튼으로 구성하며 우측 상단 X 버튼은 제외했다.
+- `돌아가기` 버튼을 누르면 모달 루트가 비활성화되어 기존 카드 선택 화면으로 복귀한다.
+- 카드별 텍스트, 버튼 참조, 훈련 선택 이벤트는 `ScenarioDetailModal` 인스펙터와 씬 직렬화값을 최종 기준으로 사용한다.
+- 검정 오버레이는 중앙 패널과 분리하고 RectTransform을 `4000 × 3000`으로 저장해 XR 시야 전체를 덮도록 했다.
+- 오버레이는 Raycast Target을 유지해 모달 표시 중 뒤쪽 카드가 선택되지 않도록 한다.
+- 기존 `XRUIInputModule`과 `TrackedDeviceGraphicRaycaster`를 유지하고, XR Origin의 `Camera Offset` 아래에 좌우 `NearFarInteractor`를 연결했다.
+- `XRInteractionManager`, `InputActionManager`, `XRI Default Input Actions`를 씬에 직렬화해 Meta Quest 컨트롤러 포즈와 트리거 입력을 사용한다.
+- `ScenarioSelectionHud`의 `RemoveAllListeners()` 호출을 제거하고 각 컴포넌트가 추가한 런타임 리스너만 추적해 해제하도록 변경했다.
+- `ScenarioCardGroupBuilder`의 자동 실행 경로를 제거해 씬 열기, 스크립트 리로드, 플레이 모드 전환 과정에서 인스펙터 값을 덮어쓰지 않게 했다.
+
+### 관련 파일
+
+- `Assets/Scripts/ScenarioDetailModal.cs`
+- `Assets/Scripts/ScenarioSelectionHud.cs`
+- `Assets/Editor/ScenarioDetailModalSceneBuilder.cs`
+- `Assets/Editor/ScenarioCardGroupBuilder.cs`
+- `Assets/Scenes/3_PPE_Room.unity`
+
+### 검증 및 후속 작업
+
+- Runtime 및 Editor Assembly 빌드 오류 0개를 확인했다.
+- 씬에 오버레이 크기, 좌우 컨트롤러 인터랙터, 입력 액션 참조가 직렬화된 것을 확인했다.
+- [ ] Meta Quest 실기기에서 오버레이 전체 시야 커버 확인
+- [ ] 좌우 컨트롤러 레이와 트리거로 카드 및 모달 버튼 선택 확인
+- [ ] `돌아가기` 동작과 모달 뒤 입력 차단 확인
