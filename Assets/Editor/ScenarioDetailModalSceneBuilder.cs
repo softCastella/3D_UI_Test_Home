@@ -7,6 +7,7 @@ using UnityEngine.InputSystem;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using UnityEngine.XR;
 using UnityEngine.XR.Interaction.Toolkit;
 using UnityEngine.XR.Interaction.Toolkit.Inputs;
 
@@ -19,6 +20,20 @@ internal static class ScenarioDetailModalSceneBuilder
     static ScenarioDetailModalSceneBuilder()
     {
         EditorApplication.delayCall += BuildLoadedTargetSceneOnce;
+        EditorSceneManager.sceneOpened += OnSceneOpened;
+        EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
+    }
+
+    private static void OnSceneOpened(Scene scene, OpenSceneMode mode)
+    {
+        if (scene.path == ScenePath)
+            EditorApplication.delayCall += BuildLoadedTargetSceneOnce;
+    }
+
+    private static void OnPlayModeStateChanged(PlayModeStateChange state)
+    {
+        if (state == PlayModeStateChange.EnteredEditMode)
+            EditorApplication.delayCall += BuildLoadedTargetSceneOnce;
     }
 
     [MenuItem("Tools/Scenario HUD/Create Scenario Detail Modal")]
@@ -31,20 +46,18 @@ internal static class ScenarioDetailModalSceneBuilder
         if (!scene.IsValid() || !scene.isLoaded)
             return;
 
+        EnsureXrLineTrackingGates(scene);
+
         ScenarioSelectionHud hud = scene.GetRootGameObjects()
             .SelectMany(root => root.GetComponentsInChildren<ScenarioSelectionHud>(true))
             .FirstOrDefault();
         if (hud == null)
             return;
 
-        bool controllersAdded = AddQuestControllerInteractors(scene);
-        if (hud.GetComponent<ScenarioDetailModal>() != null)
+        ScenarioDetailModal existingController = hud.GetComponent<ScenarioDetailModal>();
+        if (existingController != null)
         {
-            if (controllersAdded)
-            {
-                EditorSceneManager.MarkSceneDirty(scene);
-                EditorSceneManager.SaveScene(scene);
-            }
+            EnsureSerializedTrainingChoiceButtons(scene, existingController);
             return;
         }
 
@@ -53,7 +66,11 @@ internal static class ScenarioDetailModalSceneBuilder
             "Assets/Font/Pretendard-Medium SDF.asset");
 
         GameObject modalRoot = UiObject(ModalName, canvas.transform);
-        SetRect(modalRoot, Vector2.zero, new Vector2(4000f, 3000f));
+        SetRect(modalRoot, Vector2.zero, new Vector2(6000f, 4000f));
+        Canvas modalCanvas = modalRoot.AddComponent<Canvas>();
+        modalCanvas.overrideSorting = true;
+        modalCanvas.sortingOrder = 1000;
+        modalRoot.AddComponent<GraphicRaycaster>();
         Image overlay = modalRoot.AddComponent<Image>();
         overlay.color = new Color(0.02f, 0.035f, 0.05f, 0.68f);
         overlay.raycastTarget = true;
@@ -98,6 +115,18 @@ internal static class ScenarioDetailModalSceneBuilder
         serialized.FindProperty("trainingButton").objectReferenceValue = trainingButton;
         serialized.FindProperty("backButton").objectReferenceValue = backButton;
 
+        Button incompletePpeButton = CreateTrainingChoiceButton(trainingButton, "Incomplete PPE Scenario Button",
+            "PPE 불완전 착용 시나리오", new Vector2(0f, -105f));
+        Button standardTrainingButton = CreateTrainingChoiceButton(trainingButton, "Standard Training Scenario Button",
+            "정상 교육 시나리오", new Vector2(0f, -195f));
+        Button trainingChoiceBackButton = CreateTrainingChoiceButton(backButton, "Training Choice Back Button",
+            "돌아가기", new Vector2(0f, -285f));
+        serialized.FindProperty("trainingChoiceTitle").stringValue = "훈련 시나리오 선택";
+        serialized.FindProperty("trainingChoiceDescription").stringValue = "진행할 교육 시나리오를 선택해 주세요.";
+        serialized.FindProperty("incompletePpeButton").objectReferenceValue = incompletePpeButton;
+        serialized.FindProperty("standardTrainingButton").objectReferenceValue = standardTrainingButton;
+        serialized.FindProperty("trainingChoiceBackButton").objectReferenceValue = trainingChoiceBackButton;
+
         string[] titles =
         {
             "화학물질 화재 발생 시\n소화 약제 선택 및 진압 훈련",
@@ -137,6 +166,115 @@ internal static class ScenarioDetailModalSceneBuilder
         Debug.Log("Created and serialized Scenario Detail Modal. Inspector values are now authoritative.", controller);
     }
 
+    private static void EnsureSerializedTrainingChoiceButtons(Scene scene, ScenarioDetailModal controller)
+    {
+        SerializedObject serialized = new(controller);
+        Button trainingButton = serialized.FindProperty("trainingButton").objectReferenceValue as Button;
+        Button backButton = serialized.FindProperty("backButton").objectReferenceValue as Button;
+        if (trainingButton == null || backButton == null)
+            return;
+
+        Transform parent = trainingButton.transform.parent;
+        Button incompletePpeButton = FindButton(parent, "Incomplete PPE Scenario Button");
+        Button standardTrainingButton = FindButton(parent, "Standard Training Scenario Button");
+        Button trainingChoiceBackButton = FindButton(parent, "Training Choice Back Button");
+        bool changed = false;
+
+        if (incompletePpeButton == null)
+        {
+            incompletePpeButton = CreateTrainingChoiceButton(trainingButton, "Incomplete PPE Scenario Button",
+                "PPE 불완전 착용 시나리오", new Vector2(0f, -105f));
+            changed = true;
+        }
+        if (standardTrainingButton == null)
+        {
+            standardTrainingButton = CreateTrainingChoiceButton(trainingButton, "Standard Training Scenario Button",
+                "정상 교육 시나리오", new Vector2(0f, -195f));
+            changed = true;
+        }
+        if (trainingChoiceBackButton == null)
+        {
+            trainingChoiceBackButton = CreateTrainingChoiceButton(backButton, "Training Choice Back Button",
+                "돌아가기", new Vector2(0f, -285f));
+            changed = true;
+        }
+
+        SerializedProperty title = serialized.FindProperty("trainingChoiceTitle");
+        SerializedProperty description = serialized.FindProperty("trainingChoiceDescription");
+        if (string.IsNullOrEmpty(title.stringValue))
+        {
+            title.stringValue = "훈련 시나리오 선택";
+            changed = true;
+        }
+        if (string.IsNullOrEmpty(description.stringValue))
+        {
+            description.stringValue = "진행할 교육 시나리오를 선택해 주세요.";
+            changed = true;
+        }
+
+        changed |= AssignObjectReference(serialized, "incompletePpeButton", incompletePpeButton);
+        changed |= AssignObjectReference(serialized, "standardTrainingButton", standardTrainingButton);
+        changed |= AssignObjectReference(serialized, "trainingChoiceBackButton", trainingChoiceBackButton);
+        TMP_Text typographySource = serialized.FindProperty("trainingButtonText").objectReferenceValue as TMP_Text;
+        changed |= MatchFixedButtonTypography(typographySource, incompletePpeButton);
+        changed |= MatchFixedButtonTypography(typographySource, standardTrainingButton);
+        changed |= MatchFixedButtonTypography(typographySource, trainingChoiceBackButton);
+        if (!changed)
+            return;
+
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+        EditorUtility.SetDirty(controller);
+        EditorSceneManager.MarkSceneDirty(scene);
+        EditorSceneManager.SaveScene(scene);
+        Debug.Log("Migrated Scenario Detail Modal to serialized, scene-authored training choice buttons.", controller);
+    }
+
+    private static Button CreateTrainingChoiceButton(Button template, string objectName, string label, Vector2 position)
+    {
+        Button button = Object.Instantiate(template, template.transform.parent);
+        button.name = objectName;
+        button.onClick.RemoveAllListeners();
+        SetRect(button.gameObject, position, new Vector2(760f, 72f));
+        TMP_Text text = button.GetComponentInChildren<TMP_Text>(true);
+        if (text != null)
+        {
+            text.text = label;
+            text.enableAutoSizing = false;
+        }
+        button.gameObject.SetActive(false);
+        return button;
+    }
+
+    private static Button FindButton(Transform parent, string objectName)
+    {
+        Transform child = parent.Find(objectName);
+        return child != null ? child.GetComponent<Button>() : null;
+    }
+
+    private static bool AssignObjectReference(SerializedObject serialized, string propertyName, Object value)
+    {
+        SerializedProperty property = serialized.FindProperty(propertyName);
+        if (property.objectReferenceValue == value)
+            return false;
+        property.objectReferenceValue = value;
+        return true;
+    }
+
+    private static bool MatchFixedButtonTypography(TMP_Text source, Button targetButton)
+    {
+        TMP_Text target = targetButton != null ? targetButton.GetComponentInChildren<TMP_Text>(true) : null;
+        if (source == null || target == null)
+            return false;
+        if (!target.enableAutoSizing && Mathf.Approximately(target.fontSize, source.fontSize))
+            return false;
+
+        Undo.RecordObject(target, "Match serialized training button typography");
+        target.enableAutoSizing = false;
+        target.fontSize = source.fontSize;
+        EditorUtility.SetDirty(target);
+        return true;
+    }
+
     private static bool AddQuestControllerInteractors(Scene scene)
     {
         Transform xrOrigin = scene.GetRootGameObjects()
@@ -168,11 +306,60 @@ internal static class ScenarioDetailModalSceneBuilder
             changed = true;
         }
 
-        changed |= AddInteractor(cameraOffset, "Left_NearFarInteractor",
-            "Assets/Samples/XR Interaction Toolkit/3.4.1/Starter Assets/Prefabs/Interactors/Left_NearFarInteractor.prefab");
-        changed |= AddInteractor(cameraOffset, "Right_NearFarInteractor",
-            "Assets/Samples/XR Interaction Toolkit/3.4.1/Starter Assets/Prefabs/Interactors/Right_NearFarInteractor.prefab");
+        // Controller objects are authored directly in the scene. Do not create
+        // standalone interactors during script reloads or overwrite scene edits.
         return changed;
+    }
+
+    private static void EnsureXrLineTrackingGates(Scene scene)
+    {
+        bool changed = false;
+        foreach (LineRenderer lineRenderer in scene.GetRootGameObjects()
+                     .SelectMany(root => root.GetComponentsInChildren<LineRenderer>(true)))
+        {
+            if (lineRenderer.gameObject.name != "LineVisual")
+                continue;
+
+            XRLineVisualTrackingGate gate = lineRenderer.GetComponent<XRLineVisualTrackingGate>();
+            if (gate == null)
+            {
+                gate = Undo.AddComponent<XRLineVisualTrackingGate>(lineRenderer.gameObject);
+                changed = true;
+            }
+
+            XRNode node = HasAncestorNamed(lineRenderer.transform, "XR Controller Left")
+                ? XRNode.LeftHand
+                : XRNode.RightHand;
+            SerializedObject serializedGate = new(gate);
+            SerializedProperty nodeProperty = serializedGate.FindProperty("xrNode");
+            SerializedProperty rendererProperty = serializedGate.FindProperty("lineRenderer");
+            if (nodeProperty.enumValueIndex != (int)node)
+            {
+                nodeProperty.enumValueIndex = (int)node;
+                changed = true;
+            }
+            if (rendererProperty.objectReferenceValue != lineRenderer)
+            {
+                rendererProperty.objectReferenceValue = lineRenderer;
+                changed = true;
+            }
+            serializedGate.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        if (!changed)
+            return;
+
+        EditorSceneManager.MarkSceneDirty(scene);
+        EditorSceneManager.SaveScene(scene);
+        Debug.Log("Added tracking gates to XR controller line visuals.");
+    }
+
+    private static bool HasAncestorNamed(Transform transform, string objectName)
+    {
+        for (Transform current = transform; current != null; current = current.parent)
+            if (current.name == objectName)
+                return true;
+        return false;
     }
 
     private static bool AddInteractor(Transform parent, string objectName, string prefabPath)
