@@ -1,14 +1,108 @@
+using TMPro;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
+[InitializeOnLoad]
 internal static class ScenarioCardGroupBuilder
 {
     private const string TargetSceneName = "3_PPE_Room";
     private const string HudName = "Scenario Selection HUD (1)";
     private const string LayoutMarkerName = "__HorizontalCardGroups_v3";
     private const string Card3GroupName = "ScenarioCard3_Group";
+    private const string CenterVisualSyncMarker = "__CenterCardVisualsSynced_v1";
+
+    static ScenarioCardGroupBuilder()
+    {
+        EditorApplication.delayCall += SyncCenterCardVisualsInActiveScene;
+        EditorSceneManager.sceneOpened += OnSceneOpened;
+        EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
+    }
+
+    private static void OnSceneOpened(Scene scene, OpenSceneMode mode)
+    {
+        if (scene.name == TargetSceneName)
+            EditorApplication.delayCall += SyncCenterCardVisualsInActiveScene;
+    }
+
+    private static void OnPlayModeStateChanged(PlayModeStateChange state)
+    {
+        if (state == PlayModeStateChange.EnteredEditMode)
+            EditorApplication.delayCall += SyncCenterCardVisualsInActiveScene;
+    }
+
+    private static void SyncCenterCardVisualsInActiveScene()
+    {
+        if (EditorApplication.isPlayingOrWillChangePlaymode)
+            return;
+
+        Scene scene = SceneManager.GetActiveScene();
+        if (!scene.IsValid() || !scene.isLoaded || scene.name != TargetSceneName)
+            return;
+
+        Transform hud = FindSceneTransform(scene, HudName);
+        Transform group = hud != null ? FindDescendant(hud, "ScenarioCard3_Group (1)") : null;
+        if (group == null || group.Find(CenterVisualSyncMarker) != null || group.childCount < 3)
+            return;
+
+        Transform left = group.GetChild(0);
+        Transform center = group.GetChild(1);
+        Transform right = group.GetChild(2);
+        CopyCardVisualHierarchy(center, left, true);
+        CopyCardVisualHierarchy(center, right, true);
+
+        GameObject marker = new(CenterVisualSyncMarker) { hideFlags = HideFlags.HideInHierarchy };
+        marker.transform.SetParent(group, false);
+        EditorUtility.SetDirty(group);
+        EditorSceneManager.MarkSceneDirty(scene);
+        EditorSceneManager.SaveScene(scene);
+        Debug.Log("Synchronized left and right scenario card visuals from the center card.", group);
+    }
+
+    private static void CopyCardVisualHierarchy(Transform source, Transform target, bool isRoot)
+    {
+        if (!isRoot && source is RectTransform sourceRect && target is RectTransform targetRect)
+        {
+            Undo.RecordObject(targetRect, "Match center card layout");
+            targetRect.anchorMin = sourceRect.anchorMin;
+            targetRect.anchorMax = sourceRect.anchorMax;
+            targetRect.pivot = sourceRect.pivot;
+            targetRect.anchoredPosition = sourceRect.anchoredPosition;
+            targetRect.sizeDelta = sourceRect.sizeDelta;
+            targetRect.localRotation = sourceRect.localRotation;
+            targetRect.localScale = sourceRect.localScale;
+        }
+
+        CopyVisualComponents(source, target);
+        int childCount = Mathf.Min(source.childCount, target.childCount);
+        for (int index = 0; index < childCount; index++)
+            CopyCardVisualHierarchy(source.GetChild(index), target.GetChild(index), false);
+    }
+
+    private static void CopyVisualComponents(Transform source, Transform target)
+    {
+        Component[] sourceComponents = source.GetComponents<Component>();
+        foreach (Component sourceComponent in sourceComponents)
+        {
+            if (sourceComponent == null || sourceComponent is Transform || sourceComponent is Button)
+                continue;
+            if (sourceComponent is not Graphic && sourceComponent is not BaseMeshEffect)
+                continue;
+
+            Component targetComponent = target.GetComponent(sourceComponent.GetType());
+            if (targetComponent == null)
+                continue;
+
+            string preservedText = targetComponent is TMP_Text targetText ? targetText.text : null;
+            Undo.RecordObject(targetComponent, "Match center card visual style");
+            EditorUtility.CopySerialized(sourceComponent, targetComponent);
+            if (targetComponent is TMP_Text copiedText)
+                copiedText.text = preservedText;
+            EditorUtility.SetDirty(targetComponent);
+        }
+    }
 
     [MenuItem("Tools/Scenario HUD/Create Overlapping Card Groups")]
     private static void BuildGroupsOnce()

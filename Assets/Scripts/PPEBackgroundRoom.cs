@@ -20,6 +20,8 @@ public sealed class PPEBackgroundRoom : MonoBehaviour
     [SerializeField] private Color floorColor = Color.white;
     [SerializeField] private Color ceilingColor = Color.white;
     [SerializeField] private Color wallColor = Color.white;
+    [Header("Duct Appearance")]
+    [SerializeField] private Color ductColor = Color.white;
     [Header("Room Lighting")]
     [SerializeField, Range(0f, 2f)] private float roomBrightness = 1f;
     [Header("Door Appearance")]
@@ -40,6 +42,7 @@ public sealed class PPEBackgroundRoom : MonoBehaviour
 
         SetHideFlagsRecursively(generatedRoot, HideFlags.None);
         RefreshRoomMaterials(generatedRoot);
+        ApplyDuctColor();
         CreateImageDoor(transform);
 #if UNITY_EDITOR
         if (!Application.isPlaying)
@@ -50,6 +53,7 @@ public sealed class PPEBackgroundRoom : MonoBehaviour
     private void OnValidate()
     {
         ApplyRoomBrightness();
+        ApplyDuctColor();
     }
 
     private void RefreshRoomMaterials(Transform root)
@@ -138,6 +142,19 @@ public sealed class PPEBackgroundRoom : MonoBehaviour
         ApplySurfaceBrightness(root, "Right Wall", wallColor);
         ApplySurfaceBrightness(root, "Floor", floorColor);
         ApplySurfaceBrightness(root, "Ceiling", ceilingColor);
+    }
+
+    private void ApplyDuctColor()
+    {
+        Transform duct = FindSceneObject("duct");
+        if (duct == null || !duct.TryGetComponent(out MeshRenderer renderer))
+            return;
+
+        MaterialPropertyBlock propertyBlock = new();
+        renderer.GetPropertyBlock(propertyBlock);
+        propertyBlock.SetColor("_BaseColor", ductColor);
+        propertyBlock.SetColor("_Color", ductColor);
+        renderer.SetPropertyBlock(propertyBlock);
     }
 
     private void ApplySurfaceBrightness(Transform root, string objectName, Color baseColor)

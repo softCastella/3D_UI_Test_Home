@@ -70,9 +70,23 @@ Prefer adding project-specific code under `Assets/Scripts` and editor-only code 
 - For XR changes, account for both Android/Quest and Standalone OpenXR unless the requested target is explicit.
 - Do not modify imported packages or samples when a project-owned wrapper or component is sufficient.
 
+## UI authoring rules
+
+Apply these rules to every UI element and UI system in the project, not only to a specific scene, modal, or component:
+
+- When creating or modifying UI, treat scene, prefab, and Inspector-serialized values as the authoritative UI configuration.
+- Do not hardcode UI presentation values in runtime code. This includes positions, sizes, anchors, pivots, scale, spacing, colors, fonts, font sizes, labels, sorting order, and other visual or layout values.
+- Expose UI configuration through serialized fields when runtime access is required, and preserve the values authored in the Inspector, scene, or prefab.
+- Runtime code may change UI state or dynamic content when required, but it must not silently replace authored presentation or layout values.
+- Whenever a UI element is created, modified, or diagnosed, inspect all related runtime assignment code together with the scene or prefab changes. Do not complete a UI change after editing only the serialized asset while leaving conflicting runtime assignments unexamined.
+- When diagnosing or changing UI, trace the complete runtime assignment path, including `Awake`, `OnEnable`, `Start`, scene-load callbacks, initialization helpers, instantiated clones, layout components, animation systems, and editor-generated setup code.
+- Explicitly check whether entering Play Mode overwrites scene, prefab, RectTransform, Canvas, TMP, material, or component values. Remove or redesign unintended runtime overwrites instead of compensating for them with additional hardcoded assignments.
+- Prefer scene- or prefab-authored UI objects with serialized references over runtime-created UI. If runtime creation is genuinely required, use a serialized prefab or serialized configuration as its source of truth.
+- Editor builders and migration tools may provide initial defaults when creating an object, but must not repeatedly overwrite existing authored UI values. After creation, the serialized scene or prefab values are authoritative.
+
 ## Validation
 
-For code changes, check for C# compilation errors and inspect Unity logs when available. For scene, prefab, shader, XR, or rendering changes, explain any verification that still requires opening Unity or testing on a headset.
+For code changes, check for C# compilation errors and inspect Unity logs when available. For UI changes, compare relevant serialized values before and after entering Play Mode and verify that no unintended runtime assignment changes them. For scene, prefab, shader, XR, or rendering changes, explain any verification that still requires opening Unity or testing on a headset.
 
 ## Session startup
 
