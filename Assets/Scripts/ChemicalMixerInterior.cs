@@ -17,10 +17,25 @@ public sealed class ChemicalMixerInterior : MonoBehaviour
 
     [Header("Mixer Assembly")]
     [Min(0.03f)] public float shaftRadius = 0.12f;
+    [Min(0f)] public float shaftBottomClearance = 0.9f;
+    [Min(0f)] public float shaftTopInset = 0.08f;
     [Range(1, 6)] public int bladeLevels = 3;
     [Min(0.1f)] public float bladeLength = 2.15f;
     [Min(0.03f)] public float bladeThickness = 0.11f;
     public float bladeTwistDegrees = 32f;
+    public float lowestBladeHeight = -1.15f;
+    public float highestBladeHeight = 0.2f;
+
+    [Header("Floor Drainage")]
+    public bool createFloorDrainage = true;
+    public Vector2 drainPosition = new Vector2(0.56f, 0.3f);
+    [Min(0.05f)] public float drainRadius = 0.2f;
+    [Min(0.01f)] public float drainRimThickness = 0.045f;
+    public Vector2 valvePosition = new Vector2(0f, 0.3f);
+    [Min(0.1f)] public float valveBodyRadius = 0.3f;
+    [Min(0.05f)] public float valveBodyHeight = 0.16f;
+    [Min(0.1f)] public float valveWheelRadius = 0.25f;
+    [Min(0.01f)] public float valveWheelThickness = 0.035f;
 
     [Header("Appearance")]
     public Color steelColor = new Color(0.42f, 0.48f, 0.5f, 1f);
@@ -79,6 +94,8 @@ public sealed class ChemicalMixerInterior : MonoBehaviour
         CreateVessel(generatedRoot.transform);
         CreateShaft(generatedRoot.transform);
         CreateBlades(generatedRoot.transform);
+        if (createFloorDrainage)
+            CreateFloorDrainage(generatedRoot.transform);
         CreateStructuralRings(generatedRoot.transform);
         if (createManhole)
             CreateManhole(generatedRoot.transform);
@@ -225,9 +242,11 @@ public sealed class ChemicalMixerInterior : MonoBehaviour
 
     void CreateShaft(Transform parent)
     {
-        var height = wallHeight + domeHeight + bottomDishDepth * 0.7f;
+        var bottomY = -wallHeight * 0.5f - bottomDishDepth + shaftBottomClearance;
+        var topY = wallHeight * 0.5f + domeHeight - shaftTopInset;
+        var height = Mathf.Max(0.1f, topY - bottomY);
         var shaft = CreatePrimitive(PrimitiveType.Cylinder, "Central_Shaft", parent);
-        shaft.transform.localPosition = new Vector3(0f, (domeHeight - bottomDishDepth) * 0.5f, 0f);
+        shaft.transform.localPosition = new Vector3(0f, (topY + bottomY) * 0.5f, 0f);
         shaft.transform.localScale = new Vector3(shaftRadius * 2f, height * 0.5f, shaftRadius * 2f);
     }
 
@@ -236,7 +255,7 @@ public sealed class ChemicalMixerInterior : MonoBehaviour
         for (var level = 0; level < bladeLevels; level++)
         {
             var t = bladeLevels == 1 ? 0.5f : level / (float)(bladeLevels - 1);
-            var y = Mathf.Lerp(-wallHeight * 0.32f, wallHeight * 0.32f, t);
+            var y = Mathf.Lerp(lowestBladeHeight, highestBladeHeight, t);
             var assembly = new GameObject($"Blade_Level_{level + 1}");
             assembly.transform.SetParent(parent, false);
             assembly.transform.localPosition = Vector3.up * y;
@@ -250,6 +269,58 @@ public sealed class ChemicalMixerInterior : MonoBehaviour
                 blade.transform.localScale = new Vector3(bladeLength, bladeThickness, 0.38f);
                 blade.transform.localRotation = Quaternion.Euler(direction * bladeTwistDegrees, 0f, direction * 8f);
             }
+        }
+    }
+
+    void CreateFloorDrainage(Transform parent)
+    {
+        var floorY = -wallHeight * 0.5f - bottomDishDepth;
+
+        var drain = new GameObject("Floor_Drain");
+        drain.transform.SetParent(parent, false);
+        drain.transform.localPosition = new Vector3(drainPosition.x, floorY + 0.012f, drainPosition.y);
+
+        var opening = CreatePrimitive(PrimitiveType.Cylinder, "Drain_Opening", drain.transform);
+        opening.transform.localScale = new Vector3(drainRadius * 2f, 0.012f, drainRadius * 2f);
+        opening.GetComponent<MeshRenderer>().sharedMaterial = darkMaterial;
+
+        var rim = new GameObject("Drain_Rim");
+        rim.transform.SetParent(drain.transform, false);
+        rim.transform.localPosition = Vector3.up * 0.018f;
+        var rimFilter = rim.AddComponent<MeshFilter>();
+        rimFilter.sharedMesh = BuildTorusMesh(drainRadius + drainRimThickness * 0.45f,
+            drainRimThickness, 40, 8);
+        rimFilter.sharedMesh.name = "Mixer_FloorDrainRim";
+        rim.AddComponent<MeshRenderer>().sharedMaterial = generatedMaterial;
+
+        var valve = new GameObject("Floor_DrainValve");
+        valve.transform.SetParent(parent, false);
+        valve.transform.localPosition = new Vector3(valvePosition.x, floorY, valvePosition.y);
+
+        var body = CreatePrimitive(PrimitiveType.Cylinder, "Valve_Base", valve.transform);
+        body.transform.localPosition = Vector3.up * (valveBodyHeight * 0.5f + 0.015f);
+        body.transform.localScale = new Vector3(valveBodyRadius * 2f, valveBodyHeight * 0.5f,
+            valveBodyRadius * 2f);
+
+        var stemHeight = valveBodyHeight + 0.16f;
+        var stem = CreatePrimitive(PrimitiveType.Cylinder, "Valve_Stem", valve.transform);
+        stem.transform.localPosition = Vector3.up * (valveBodyHeight + stemHeight * 0.5f);
+        stem.transform.localScale = new Vector3(0.045f, stemHeight * 0.5f, 0.045f);
+
+        var wheel = new GameObject("Valve_Handwheel");
+        wheel.transform.SetParent(valve.transform, false);
+        wheel.transform.localPosition = Vector3.up * (valveBodyHeight + stemHeight);
+        var wheelFilter = wheel.AddComponent<MeshFilter>();
+        wheelFilter.sharedMesh = BuildTorusMesh(valveWheelRadius, valveWheelThickness, 32, 8);
+        wheelFilter.sharedMesh.name = "Mixer_DrainValveHandwheel";
+        wheel.AddComponent<MeshRenderer>().sharedMaterial = generatedMaterial;
+
+        for (var spokeIndex = 0; spokeIndex < 4; spokeIndex++)
+        {
+            var spoke = CreatePrimitive(PrimitiveType.Cube, $"Handwheel_Spoke_{spokeIndex + 1}", wheel.transform);
+            spoke.transform.localRotation = Quaternion.Euler(0f, spokeIndex * 45f, 0f);
+            spoke.transform.localScale = new Vector3(valveWheelRadius * 1.7f,
+                valveWheelThickness * 0.8f, valveWheelThickness * 0.8f);
         }
     }
 

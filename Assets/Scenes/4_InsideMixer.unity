@@ -2667,10 +2667,23 @@ MonoBehaviour:
   radialSegments: 64
   domeSegments: 12
   shaftRadius: 0.12
-  bladeLevels: 3
-  bladeLength: 2.15
+  shaftBottomClearance: 1.05
+  shaftTopInset: 0.08
+  bladeLevels: 2
+  bladeLength: 1.85
   bladeThickness: 0.11
   bladeTwistDegrees: 32
+  lowestBladeHeight: -1.25
+  highestBladeHeight: 0.05
+  createFloorDrainage: 1
+  drainPosition: {x: 0.56, y: 0.3}
+  drainRadius: 0.2
+  drainRimThickness: 0.045
+  valvePosition: {x: 0, y: 0.3}
+  valveBodyRadius: 0.3
+  valveBodyHeight: 0.16
+  valveWheelRadius: 0.25
+  valveWheelThickness: 0.035
   steelColor: {r: 0.42, g: 0.48, b: 0.5, a: 1}
   darkSteelColor: {r: 0.08, g: 0.11, b: 0.12, a: 1}
   smoothness: 0.62
