@@ -9,6 +9,8 @@ using UnityEngine;
 [DisallowMultipleComponent]
 public sealed class PPEBackgroundRoom : MonoBehaviour
 {
+    private const string GeneratedRootName = "Generated Image Room";
+
     [SerializeField] private Texture2D wallTexture;
     [SerializeField] private Texture2D floorTexture;
     [SerializeField] private Texture2D ceilingTexture;
@@ -28,8 +30,6 @@ public sealed class PPEBackgroundRoom : MonoBehaviour
     [SerializeField] private Color doorColor = new(0.72f, 0.72f, 0.72f, 1f);
     [SerializeField, Min(0.5f)] private float doorHeight = 2.3f;
     [SerializeField, Min(0.01f)] private float doorWallInset = 0.08f;
-
-    private const string GeneratedRootName = "Generated Image Room";
 
     private void OnEnable()
     {
