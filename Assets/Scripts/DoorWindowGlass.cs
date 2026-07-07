@@ -26,6 +26,23 @@ public sealed class DoorWindowGlass : MonoBehaviour
         RebuildMesh();
     }
 
+    private void OnDestroy()
+    {
+        if (!TryGetComponent(out MeshFilter meshFilter))
+            return;
+
+        Mesh mesh = meshFilter.sharedMesh;
+        if (mesh == null || !mesh.name.StartsWith("PPE Door Octagonal Glass"))
+            return;
+
+        if (Application.isPlaying)
+            Destroy(mesh);
+#if UNITY_EDITOR
+        else
+            DestroyImmediate(mesh);
+#endif
+    }
+
     private void RebuildMesh()
     {
         if (!TryGetComponent(out MeshFilter meshFilter))
@@ -53,21 +70,18 @@ public sealed class DoorWindowGlass : MonoBehaviour
             8, 4, 5, 8, 5, 6, 8, 6, 7, 8, 7, 0
         };
 
-        Mesh mesh = new() { name = "PPE Door Octagonal Glass" };
-        mesh.hideFlags = HideFlags.DontSave;
+        Mesh mesh = meshFilter.sharedMesh;
+        if (mesh == null || !mesh.name.StartsWith("PPE Door Octagonal Glass"))
+        {
+            mesh = new() { name = "PPE Door Octagonal Glass" };
+            mesh.hideFlags = HideFlags.DontSave;
+            meshFilter.sharedMesh = mesh;
+        }
+
+        mesh.Clear();
         mesh.vertices = vertices;
         mesh.triangles = triangles;
         mesh.RecalculateNormals();
         mesh.RecalculateBounds();
-
-        Mesh previousMesh = meshFilter.sharedMesh;
-        meshFilter.sharedMesh = mesh;
-        if (previousMesh == null || !previousMesh.name.StartsWith("PPE Door Octagonal Glass"))
-            return;
-
-        if (Application.isPlaying)
-            Destroy(previousMesh);
-        else
-            DestroyImmediate(previousMesh);
     }
 }

@@ -24,6 +24,8 @@ public sealed class PPEBackgroundRoom : MonoBehaviour
     [SerializeField] private Color wallColor = Color.white;
     [Header("Duct Appearance")]
     [SerializeField] private Color ductColor = Color.white;
+    [Header("Bench Appearance")]
+    [SerializeField] private Color benchColor = new(2f, 1.96f, 1.92f, 1f);
     [Header("Room Lighting")]
     [SerializeField, Range(0f, 2f)] private float roomBrightness = 1f;
     [Header("Door Appearance")]
@@ -43,6 +45,7 @@ public sealed class PPEBackgroundRoom : MonoBehaviour
         SetHideFlagsRecursively(generatedRoot, HideFlags.None);
         RefreshRoomMaterials(generatedRoot);
         ApplyDuctColor();
+        ApplyBenchColor();
         CreateImageDoor(transform);
 #if UNITY_EDITOR
         if (!Application.isPlaying)
@@ -54,6 +57,7 @@ public sealed class PPEBackgroundRoom : MonoBehaviour
     {
         ApplyRoomBrightness();
         ApplyDuctColor();
+        ApplyBenchColor();
     }
 
     private void RefreshRoomMaterials(Transform root)
@@ -155,6 +159,28 @@ public sealed class PPEBackgroundRoom : MonoBehaviour
         propertyBlock.SetColor("_BaseColor", ductColor);
         propertyBlock.SetColor("_Color", ductColor);
         renderer.SetPropertyBlock(propertyBlock);
+    }
+
+    private void ApplyBenchColor()
+    {
+        Color adjustedColor = benchColor * roomBrightness;
+        Transform[] transforms = FindObjectsByType<Transform>(FindObjectsInactive.Include,
+            FindObjectsSortMode.None);
+        foreach (Transform candidate in transforms)
+        {
+            if (!candidate.name.StartsWith("ppe_room_bench") || !candidate.gameObject.scene.IsValid())
+                continue;
+
+            Renderer[] renderers = candidate.GetComponentsInChildren<Renderer>(true);
+            foreach (Renderer renderer in renderers)
+            {
+                MaterialPropertyBlock propertyBlock = new();
+                renderer.GetPropertyBlock(propertyBlock);
+                propertyBlock.SetColor("_BaseColor", adjustedColor);
+                propertyBlock.SetColor("_Color", adjustedColor);
+                renderer.SetPropertyBlock(propertyBlock);
+            }
+        }
     }
 
     private void ApplySurfaceBrightness(Transform root, string objectName, Color baseColor)
