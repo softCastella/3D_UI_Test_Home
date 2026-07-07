@@ -11290,7 +11290,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: 742f88ace6ac23143bcb0ff76ea72c19, type: 3}
       propertyPath: m_Name
-      value: tripo_convert_7c300fa3-3441-48db-8efa-478b314aed0e
+      value: metal_locker
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -14329,7 +14329,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: 17e98824402c0724cbbed4e3b175f706, type: 3}
       propertyPath: m_Name
-      value: mask+locker
+      value: mask_locker
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -15119,7 +15119,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: 50c515efc3cb5cf4a82cdbf0ffd0ae91, type: 3}
       propertyPath: m_Name
-      value: tripo_convert_95058666-a47a-4d38-b17f-03064b839232 (1)
+      value: safety_cabinet
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -18468,7 +18468,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: cbcb04105ec55e64dabbfafbf107152c, type: 3}
       propertyPath: m_Name
-      value: janitorial+cart
+      value: janitorial_cart
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -19646,7 +19646,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: b567b0ee4d79db84a8bd09f777ad6d82, type: 3}
       propertyPath: m_Name
-      value: hand+sanitizer+dispenser
+      value: hand_sanitizer_dispenser
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

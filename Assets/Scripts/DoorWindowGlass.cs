@@ -65,6 +65,9 @@ public sealed class DoorWindowGlass : MonoBehaviour
         if (previousMesh == null || !previousMesh.name.StartsWith("PPE Door Octagonal Glass"))
             return;
 
-        Destroy(previousMesh);
+        if (Application.isPlaying)
+            Destroy(previousMesh);
+        else
+            DestroyImmediate(previousMesh);
     }
 }
