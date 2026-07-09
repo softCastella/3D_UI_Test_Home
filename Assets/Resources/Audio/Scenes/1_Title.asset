@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: e0b780a82fa741cfb9e8956ef1b318ef, type: 3}
-  m_Name: 1_TitleScene
+  m_Name: 1_Title
   m_EditorClassIdentifier: 
   startDelay: 1
   bgm: {fileID: 8300000, guid: 7c41eb4341fd57748ae0fde2eeffa676, type: 3}

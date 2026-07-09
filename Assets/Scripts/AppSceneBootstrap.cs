@@ -4,7 +4,7 @@ using UnityEngine.SceneManagement;
 
 public sealed class AppSceneBootstrap : MonoBehaviour
 {
-    [SerializeField] private string titleSceneName = "TitleScene";
+    [SerializeField] private string titleSceneName = "1_Title";
     [SerializeField, Min(0f)] private float startupDelay;
 
     private IEnumerator Start()
@@ -18,7 +18,7 @@ public sealed class AppSceneBootstrap : MonoBehaviour
 
         if (!Application.CanStreamedLevelBeLoaded(titleSceneName))
         {
-            Debug.LogError($"AppSceneBootstrap: Build Settings에 '{titleSceneName}' 씬이 없습니다.", this);
+            Debug.LogError($"AppSceneBootstrap: Build Settings does not contain scene '{titleSceneName}'.", this);
             yield break;
         }
 
