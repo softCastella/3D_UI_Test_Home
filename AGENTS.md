@@ -84,6 +84,27 @@ Apply these rules to every UI element and UI system in the project, not only to 
 - Prefer scene- or prefab-authored UI objects with serialized references over runtime-created UI. If runtime creation is genuinely required, use a serialized prefab or serialized configuration as its source of truth.
 - Editor builders and migration tools may provide initial defaults when creating an object, but must not repeatedly overwrite existing authored UI values. After creation, the serialized scene or prefab values are authoritative.
 
+## XR shader authoring rules
+
+Apply these rules to project-owned hand-written shaders used by world-space UI, scene geometry, hands, or other XR-visible objects:
+
+- Treat Meta Quest/OpenXR Single Pass Instanced rendering as a required shader path. Do not consider a shader complete after validating only the Unity Game view or one eye.
+- Vertex input structs must include `UNITY_VERTEX_INPUT_INSTANCE_ID`.
+- Vertex output structs must include `UNITY_VERTEX_OUTPUT_STEREO`.
+- At the start of the vertex function, call `UNITY_SETUP_INSTANCE_ID(input)` before `UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output)`.
+- In fragment functions that require the stereo eye index, call `UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input)`.
+- When instance data must reach the fragment stage, include the instance ID in the varyings and use `UNITY_TRANSFER_INSTANCE_ID(input, output)` plus `UNITY_SETUP_INSTANCE_ID(input)` in the fragment function.
+- A symptom where an object disappears when the left eye is closed, renders in only one eye, or differs in position between eyes should first be investigated as missing Single Pass Instanced initialization.
+- Prefer URP-provided shader libraries and XR-compatible URP/Shader Graph shaders. When importing a custom or third-party shader, explicitly verify its stereo instancing macros before assigning it to XR UI.
+- After modifying a shader, wait for shader import and script compilation to finish before entering Play Mode. Do not start Quest/OpenXR Play Mode during compilation or domain reload because the OpenXR loader restart can destabilize or disconnect Quest Link.
+- Validate custom XR shaders on both eyes of a Quest or OpenXR headset. Game view validation alone is insufficient.
+
+## Generated scene content rules
+
+- `[ExecuteAlways]`, `OnEnable`, and `OnValidate` code must not delete and recreate scene-authored geometry or overwrite child Transform values automatically.
+- Procedural rebuild operations must be explicit editor commands or context-menu actions. After generation, the serialized scene hierarchy and Inspector values are authoritative.
+- If runtime-only material recovery is necessary, separate it from geometry generation. Reapply materials to existing renderers without rebuilding meshes, hierarchy, positions, rotations, or scales.
+
 ## Validation
 
 For code changes, check for C# compilation errors and inspect Unity logs when available. For UI changes, compare relevant serialized values before and after entering Play Mode and verify that no unintended runtime assignment changes them. For scene, prefab, shader, XR, or rendering changes, explain any verification that still requires opening Unity or testing on a headset.
