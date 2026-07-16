@@ -52,11 +52,11 @@ public sealed class ChemicalMixerInterior : MonoBehaviour
 
     Material generatedMaterial;
     Material darkMaterial;
-    bool rebuildQueued;
 
     void OnEnable()
     {
-        Rebuild();
+        CreateMaterial();
+        ApplyMaterialsToExistingGeometry();
     }
 
     void OnValidate()
@@ -65,21 +65,21 @@ public sealed class ChemicalMixerInterior : MonoBehaviour
         wallHeight = Mathf.Max(0.5f, wallHeight);
         domeHeight = Mathf.Max(0.1f, domeHeight);
         bladeLength = Mathf.Clamp(bladeLength, 0.1f, radius * 0.9f);
-
-        if (!isActiveAndEnabled || rebuildQueued)
-            return;
-
-        rebuildQueued = true;
-        Application.onBeforeRender -= RebuildBeforeRender;
-        Application.onBeforeRender += RebuildBeforeRender;
     }
 
-    void RebuildBeforeRender()
+    void ApplyMaterialsToExistingGeometry()
     {
-        Application.onBeforeRender -= RebuildBeforeRender;
-        rebuildQueued = false;
-        if (this != null && isActiveAndEnabled)
-            Rebuild();
+        var generatedRoot = transform.Find(GeneratedRootName);
+        if (generatedRoot == null || generatedMaterial == null)
+            return;
+
+        foreach (var renderer in generatedRoot.GetComponentsInChildren<MeshRenderer>(true))
+        {
+            bool usesDarkMaterial = renderer.name == "Drain_Opening" || renderer.name == "Opening_Dark";
+            renderer.sharedMaterial = usesDarkMaterial && darkMaterial != null
+                ? darkMaterial
+                : generatedMaterial;
+        }
     }
 
     [ContextMenu("Rebuild Mixer Interior")]

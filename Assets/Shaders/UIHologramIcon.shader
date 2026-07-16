@@ -68,6 +68,7 @@ Shader "3D UI Test/UI/Hologram Icon"
                 float4 positionOS : POSITION;
                 float4 color : COLOR;
                 float2 uv : TEXCOORD0;
+                UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
             struct Varyings
@@ -102,6 +103,7 @@ Shader "3D UI Test/UI/Hologram Icon"
             Varyings Vert(Attributes input)
             {
                 Varyings output;
+                UNITY_SETUP_INSTANCE_ID(input);
                 UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
                 output.positionOS = input.positionOS;
                 output.positionCS = TransformObjectToHClip(input.positionOS.xyz);
