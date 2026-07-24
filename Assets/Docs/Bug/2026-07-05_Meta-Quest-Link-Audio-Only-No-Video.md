@@ -4,7 +4,7 @@
 |---|---|
 | 최초 기록 | 2026-07-05 |
 | 재발 확인 | 2026-07-16 |
-| 상태 | Meta Quest Link 런타임 복구 및 재검증 필요 |
+| 상태 | 2026-07-25 OpenXR Play Mode 초기화 정지 복구 완료, 기존 Link 장애 재발 모니터링 |
 | 영향 범위 | PC Meta Quest Link 및 Unity Editor OpenXR Play Mode |
 | 심각도 | 높음 — XR 영상 출력과 Unity HMD 테스트 불가 |
 | 확인된 연결 방식 | 유선 Quest Link |
@@ -200,3 +200,92 @@ C:\Program Files\Meta Horizon\Setup.exe /repair
 - `%LOCALAPPDATA%\Oculus\OVRServerBreakpad\`
 
 > 외부 공유 전에 로그에 포함될 수 있는 사용자 ID, 장치 ID, 머신 ID 등 개인정보를 제거해야 한다.
+
+## 추가 사례 — 2026-07-25 Unity Play Mode OpenXR 초기화 정지
+
+### 증상
+
+- `Assets/Scenes/3_PPE_Room.unity`를 연 뒤 Play Mode에 진입하면 Unity Editor가 멈춘 것처럼 보였다.
+- Unity를 재기동해도 Play Mode에 다시 진입하면 동일한 현상이 반복됐다.
+- PPE룸 씬이나 평면 거울 렌더링 부하가 원인으로 의심됐으나 씬 로드 자체는 정상적으로 끝났다.
+
+### 진단 결과
+
+Unity `Editor.log`에서 PPE룸 씬은 약 `1.76초` 만에 정상 로드됐다.
+
+```text
+Opening scene 'Assets/Scenes/3_PPE_Room.unity'
+Loaded scene 'Assets/Scenes/3_PPE_Room.unity'
+Total Operation Time: 1761.552 ms
+Memory consumption went from 0.79 GB to 0.64 GB.
+```
+
+Play Mode 전환 후 로그는 다음 OpenXR 동기 초기화 지점에서 더 이상 진행되지 않았다.
+
+```text
+UnityEngine.XR.OpenXR.OpenXRLoaderBase:InitializeInternal()
+UnityEngine.XR.OpenXR.OpenXRLoaderBase:Initialize()
+UnityEngine.XR.Management.XRManagerSettings:InitializeLoaderSync()
+UnityEngine.XR.Management.XRGeneralSettings:InitXRSDK()
+UnityEngine.XR.Management.XRGeneralSettings:AttemptInitializeXRSDKOnLoad()
+```
+
+추가 확인 사항:
+
+- Windows 활성 OpenXR Runtime은 Meta Runtime으로 정상 등록돼 있었다.
+
+```text
+C:\Program Files\Meta Horizon\Support\oculus-runtime\oculus_openxr_64.json
+```
+
+- `Assets/XR/XRGeneralSettingsPerBuildTarget.asset`의 `Initialize XR on Startup`은 활성화 상태였다.
+- `OVRService`는 `Running`이었지만, 장애 조사 초기에는 Meta Quest Link 클라이언트와 주요 런타임 프로세스가 정상적으로 올라오지 않은 상태였다.
+- PPE룸 씬은 정상 로드됐고 메모리 부족, 무한 루프 또는 `PlanarMirrorRenderer` 재귀 렌더링 흔적은 발견되지 않았다.
+- 따라서 이번 정지는 PPE룸 콘텐츠가 아니라 응답하지 않는 Meta OpenXR Runtime을 Unity가 동기식으로 기다린 것이 원인으로 판정됐다.
+
+### 수행한 복구
+
+1. Meta Quest Link 클라이언트를 직접 실행했다.
+
+```text
+C:\Program Files\Meta Horizon\Support\oculus-client\OculusClient.exe
+```
+
+2. 다음 Meta 런타임 프로세스가 정상 실행되는 것을 확인했다.
+
+```text
+OVRServer_x64
+OculusDash
+oculus-platform-runtime
+OVRRedir
+OVRServiceLauncher
+```
+
+3. 이미 OpenXR 초기화에서 멈춘 Unity는 Meta 런타임 실행 후에도 자동으로 복구되지 않았다.
+4. 멈춘 Unity 메인 프로세스와 해당 Asset Import Worker를 강제 종료했다.
+5. Meta Quest Link 런타임이 실행된 상태에서 Unity 프로젝트를 다시 열었다.
+6. 새 Unity Editor 프로세스가 정상 응답하고 프로젝트 초기화가 진행되는 것을 확인했다.
+7. 이후 Play Mode가 정상 동작하는 것을 사용자 확인으로 검증했다.
+
+### 결론 및 재발 대응
+
+- Meta Quest Link 클라이언트와 런타임이 완전히 준비되기 전에 Unity Play Mode에 진입하지 않는다.
+- Unity 로그가 `InitializeLoaderSync()`에서 멈추면 씬 콘텐츠를 먼저 수정하지 말고 Meta 런타임 프로세스를 확인한다.
+- 이미 동기 초기화에서 멈춘 Unity는 Meta 앱을 뒤늦게 실행해도 풀리지 않을 수 있으므로 Unity를 종료하고 다시 연다.
+- 강제 종료 전에는 저장되지 않은 씬과 Inspector 변경이 유실될 수 있음을 확인한다.
+- 권장 복구 순서는 다음과 같다.
+
+```text
+Unity Play Mode 중지 또는 Unity 종료
+→ Meta Quest Link 실행
+→ 헤드셋 Link 연결 확인
+→ OVRServer_x64 등 런타임 프로세스 확인
+→ Unity 프로젝트 재실행
+→ 컴파일과 셰이더 임포트 완료 확인
+→ Play Mode 진입
+```
+
+### 2026-07-25 최종 상태
+
+- Meta Quest Link 런타임 실행 후 Unity를 완전히 재기동하여 해결됐다.
+- PPE룸 씬 또는 평면 거울 코드 변경은 필요하지 않았다.

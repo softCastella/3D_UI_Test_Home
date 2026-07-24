@@ -9,6 +9,8 @@ Shader "Project/Handwritten Signature Reveal"
         _InkThreshold ("Ink Threshold", Range(0, 1)) = 0.72
         _InkSoftness ("Ink Softness", Range(0.001, 0.3)) = 0.18
         _UseTextureAlpha ("Use Texture Alpha", Range(0, 1)) = 0
+        _InkExpansion ("Ink Expansion", Range(0, 0.03)) = 0
+        _AlphaBoost ("Alpha Boost", Range(1, 4)) = 1
         _CropRect ("Crop Rect", Vector) = (0, 0, 1, 1)
     }
 
@@ -49,6 +51,8 @@ Shader "Project/Handwritten Signature Reveal"
                 float _InkThreshold;
                 float _InkSoftness;
                 float _UseTextureAlpha;
+                float _InkExpansion;
+                float _AlphaBoost;
             CBUFFER_END
 
             struct Attributes
@@ -80,16 +84,42 @@ Shader "Project/Handwritten Signature Reveal"
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
 
                 float2 croppedUv = lerp(_CropRect.xy, _CropRect.zw, input.uv);
-                half4 signature = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, croppedUv);
-                half luminance = dot(signature.rgb, half3(0.2126h, 0.7152h, 0.0722h));
-                half inkFromLuminance = 1.0h - smoothstep(
+                float2 expansionX = float2(_InkExpansion, 0.0);
+                float2 expansionY = float2(0.0, _InkExpansion);
+                half4 signatureCenter = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, croppedUv);
+                half4 signatureLeft = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, croppedUv - expansionX);
+                half4 signatureRight = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, croppedUv + expansionX);
+                half4 signatureDown = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, croppedUv - expansionY);
+                half4 signatureUp = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, croppedUv + expansionY);
+
+                half centerInk = 1.0h - smoothstep(
                     _InkThreshold,
                     _InkThreshold + _InkSoftness,
-                    luminance);
-                half sourceAlpha = lerp(
-                    inkFromLuminance,
-                    inkFromLuminance * signature.a,
-                    saturate(_UseTextureAlpha));
+                    dot(signatureCenter.rgb, half3(0.2126h, 0.7152h, 0.0722h)));
+                half leftInk = 1.0h - smoothstep(
+                    _InkThreshold,
+                    _InkThreshold + _InkSoftness,
+                    dot(signatureLeft.rgb, half3(0.2126h, 0.7152h, 0.0722h)));
+                half rightInk = 1.0h - smoothstep(
+                    _InkThreshold,
+                    _InkThreshold + _InkSoftness,
+                    dot(signatureRight.rgb, half3(0.2126h, 0.7152h, 0.0722h)));
+                half downInk = 1.0h - smoothstep(
+                    _InkThreshold,
+                    _InkThreshold + _InkSoftness,
+                    dot(signatureDown.rgb, half3(0.2126h, 0.7152h, 0.0722h)));
+                half upInk = 1.0h - smoothstep(
+                    _InkThreshold,
+                    _InkThreshold + _InkSoftness,
+                    dot(signatureUp.rgb, half3(0.2126h, 0.7152h, 0.0722h)));
+
+                half sourceAlpha = centerInk * signatureCenter.a;
+                sourceAlpha = max(sourceAlpha, leftInk * signatureLeft.a);
+                sourceAlpha = max(sourceAlpha, rightInk * signatureRight.a);
+                sourceAlpha = max(sourceAlpha, downInk * signatureDown.a);
+                sourceAlpha = max(sourceAlpha, upInk * signatureUp.a);
+                sourceAlpha = lerp(centerInk, sourceAlpha, saturate(_UseTextureAlpha));
+                sourceAlpha = saturate(sourceAlpha * _AlphaBoost);
 
                 float revealPath = input.uv.x
                     + sin(input.uv.y * 17.0) * 0.018

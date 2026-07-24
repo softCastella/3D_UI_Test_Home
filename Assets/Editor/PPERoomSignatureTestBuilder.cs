@@ -12,9 +12,13 @@ public static class PPERoomSignatureTestBuilder
     const string ShaderName = "Project/Handwritten Signature Reveal";
     const string MaterialFolder = "Assets/Materials/PPE/Tablet/Signatures";
     const string PlayerTexturePath = "Assets/UIs/sign_stamp/sign_player_rm.png";
-    const string ConductorTexturePath = "Assets/UIs/sign_stamp/sign_conductor.png";
+    const string ConductorTexturePath = "Assets/UIs/sign_stamp/sign_conductor_ppe.png";
+    const string CheckTexturePath = "Assets/UIs/sign_stamp/sign_check.png";
+    const string CheckAudioPath = "Assets/Audio/SFX/check.ogg";
+    const string SignAudioPath = "Assets/Audio/SFX/sign.ogg";
     const string PlayerMaterialPath = MaterialFolder + "/PlayerSignature_Handwrite.mat";
     const string ConductorMaterialPath = MaterialFolder + "/ConductorSignature_Handwrite.mat";
+    const string CheckMaterialPath = MaterialFolder + "/ChecklistCheck_Handwrite.mat";
 
     [MenuItem("Tools/PPE/Build Tablet Signature Test")]
     public static void Build()
@@ -37,9 +41,16 @@ public static class PPERoomSignatureTestBuilder
 
         Texture2D playerTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(PlayerTexturePath);
         Texture2D conductorTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(ConductorTexturePath);
-        if (playerTexture == null || conductorTexture == null)
+        Texture2D checkTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(CheckTexturePath);
+        AudioClip checkAudio = AssetDatabase.LoadAssetAtPath<AudioClip>(CheckAudioPath);
+        AudioClip signAudio = AssetDatabase.LoadAssetAtPath<AudioClip>(SignAudioPath);
+        if (playerTexture == null || conductorTexture == null || checkTexture == null ||
+            checkAudio == null || signAudio == null)
         {
-            Debug.LogError($"Cannot build signature test. player={playerTexture != null} conductor={conductorTexture != null}");
+            Debug.LogError(
+                $"Cannot build signature test. player={playerTexture != null} " +
+                $"conductor={conductorTexture != null} check={checkTexture != null} " +
+                $"checkAudio={checkAudio != null} signAudio={signAudio != null}");
             return;
         }
 
@@ -52,6 +63,18 @@ public static class PPERoomSignatureTestBuilder
             true,
             0.62f,
             0.2f);
+        Material checkMaterial = CreateOrUpdateMaterial(
+            CheckMaterialPath,
+            signatureShader,
+            checkTexture,
+            new Vector4(0f, 0f, 1f, 1f),
+            true,
+            0.62f,
+            0.12f);
+        checkMaterial.SetColor("_InkColor", new Color(0.01f, 0.025f, 0.03f, 1f));
+        checkMaterial.SetFloat("_InkExpansion", 0.025f);
+        checkMaterial.SetFloat("_AlphaBoost", 3f);
+        EditorUtility.SetDirty(checkMaterial);
         Material conductorMaterial = CreateOrUpdateMaterial(
             ConductorMaterialPath,
             signatureShader,
@@ -84,17 +107,73 @@ public static class PPERoomSignatureTestBuilder
             new Vector3(-0.03f, -1.65f, -0.25f),
             new Vector3(2f, 0.26f, 1f),
             conductorMaterial);
+        MeshRenderer checkerRenderer = CreateSignatureQuad(
+            root.transform,
+            "Checker_Signature",
+            new Vector3(2.58f, -1.65f, -0.25f),
+            new Vector3(2f, 0.26f, 1f),
+            conductorMaterial);
+
+        float[] checkYPositions = { -0.07f, -0.22f, -0.37f, -0.52f, -0.67f };
+        MeshRenderer[] checkRenderers = new MeshRenderer[checkYPositions.Length];
+        for (int i = 0; i < checkYPositions.Length; i++)
+        {
+            checkRenderers[i] = CreateSignatureQuad(
+                root.transform,
+                $"Checklist_Check_{i + 1:00}",
+                new Vector3(-3.74f, checkYPositions[i], -0.25f),
+                new Vector3(0.34f, 0.103f, 1f),
+                checkMaterial);
+        }
 
         HandwrittenSignatureSequence sequence = root.AddComponent<HandwrittenSignatureSequence>();
+        AudioSource audioSource = root.AddComponent<AudioSource>();
+        audioSource.playOnAwake = false;
+        audioSource.loop = false;
+        audioSource.spatialBlend = 1f;
+        audioSource.dopplerLevel = 0f;
+        audioSource.minDistance = 3f;
+        audioSource.maxDistance = 20f;
+
         SerializedObject serializedSequence = new(sequence);
         serializedSequence.FindProperty("playOnEnable").boolValue = true;
         serializedSequence.FindProperty("useUnscaledTime").boolValue = false;
         serializedSequence.FindProperty("initialDelay").floatValue = 0.8f;
+        serializedSequence.FindProperty("audioSource").objectReferenceValue = audioSource;
+        serializedSequence.FindProperty("duckBgmDuringPlayback").boolValue = true;
+        serializedSequence.FindProperty("duckedBgmVolume").floatValue = 0.25f;
 
         SerializedProperty steps = serializedSequence.FindProperty("signatures");
-        steps.arraySize = 2;
-        ConfigureStep(steps.GetArrayElementAtIndex(0), playerRenderer, 0f, 1.6f);
-        ConfigureStep(steps.GetArrayElementAtIndex(1), conductorRenderer, 0.35f, 1.5f);
+        steps.arraySize = checkRenderers.Length + 3;
+        for (int i = 0; i < checkRenderers.Length; i++)
+        {
+            ConfigureStep(
+                steps.GetArrayElementAtIndex(i),
+                checkRenderers[i],
+                checkAudio,
+                i == 0 ? 0f : 0.12f,
+                checkAudio.length);
+        }
+
+        int signatureIndex = checkRenderers.Length;
+        ConfigureStep(
+            steps.GetArrayElementAtIndex(signatureIndex),
+            playerRenderer,
+            signAudio,
+            0.35f,
+            signAudio.length);
+        ConfigureStep(
+            steps.GetArrayElementAtIndex(signatureIndex + 1),
+            conductorRenderer,
+            signAudio,
+            0.35f,
+            signAudio.length);
+        ConfigureStep(
+            steps.GetArrayElementAtIndex(signatureIndex + 2),
+            checkerRenderer,
+            signAudio,
+            0.35f,
+            signAudio.length);
         serializedSequence.ApplyModifiedPropertiesWithoutUndo();
 
         EditorUtility.SetDirty(root);
@@ -109,10 +188,13 @@ public static class PPERoomSignatureTestBuilder
     static void ConfigureStep(
         SerializedProperty step,
         Renderer renderer,
+        AudioClip sound,
         float delayBefore,
         float duration)
     {
         step.FindPropertyRelative("targetRenderer").objectReferenceValue = renderer;
+        step.FindPropertyRelative("sound").objectReferenceValue = sound;
+        step.FindPropertyRelative("soundVolume").floatValue = 1f;
         step.FindPropertyRelative("delayBefore").floatValue = delayBefore;
         step.FindPropertyRelative("duration").floatValue = duration;
         step.FindPropertyRelative("revealCurve").animationCurveValue =
@@ -175,6 +257,8 @@ public static class PPERoomSignatureTestBuilder
         material.SetFloat("_InkThreshold", threshold);
         material.SetFloat("_InkSoftness", softness);
         material.SetFloat("_UseTextureAlpha", useTextureAlpha ? 1f : 0f);
+        material.SetFloat("_InkExpansion", 0f);
+        material.SetFloat("_AlphaBoost", 1f);
         material.SetVector("_CropRect", cropRect);
         material.enableInstancing = true;
         material.renderQueue = (int)RenderQueue.Transparent;

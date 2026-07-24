@@ -18,6 +18,15 @@ EditorBuildSettings:
     path: Assets/Scenes/3_PPE_Room.unity
     guid: edf49974917a8e44fb20478d5a677a54
   - enabled: 1
+    path: Assets/Scenes/4_InsideMixer.unity
+    guid: de100982fa3753449a7976e76e56c436
+  - enabled: 1
+    path: Assets/Scenes/5_MixerRoom.unity
+    guid: 6841727693fa46e439c8d1c005e895db
+  - enabled: 1
+    path: Assets/Scenes/6_LoadingScene.unity
+    guid: db44af3b166fb9f448ddf3ab7a969da6
+  - enabled: 0
     path: Assets/Scenes/Confined Space Scene_half.unity
     guid: 99c9720ab356a0642a771bea13969a05
   m_configObjects:

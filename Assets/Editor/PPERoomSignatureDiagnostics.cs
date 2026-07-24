@@ -29,26 +29,40 @@ public static class PPERoomSignatureDiagnostics
         Camera camera = CreateDocumentCamera(documentPlane);
         try
         {
-            sequence.SetStepReveal(0, 0f);
-            sequence.SetStepReveal(1, 0f);
+            SetAllSteps(sequence, 0f);
             CaptureCamera("signature_00_empty", camera);
 
-            sequence.SetStepReveal(0, 0.62f);
-            sequence.SetStepReveal(1, 0f);
-            CaptureCamera("signature_01_player_writing", camera);
+            for (int i = 0; i < 5; i++)
+                sequence.SetStepReveal(i, i < 3 ? 1f : 0f);
+            sequence.SetStepReveal(3, 0.62f);
+            CaptureCamera("signature_01_checklist_writing", camera);
 
-            sequence.SetStepReveal(0, 1f);
-            sequence.SetStepReveal(1, 0.58f);
-            CaptureCamera("signature_02_conductor_writing", camera);
+            for (int i = 0; i < 5; i++)
+                sequence.SetStepReveal(i, 1f);
+            sequence.SetStepReveal(5, 0.62f);
+            CaptureCamera("signature_02_player_writing", camera);
 
-            sequence.SetStepReveal(0, 1f);
-            sequence.SetStepReveal(1, 1f);
-            CaptureCamera("signature_03_complete", camera);
+            sequence.SetStepReveal(5, 1f);
+            sequence.SetStepReveal(6, 0.58f);
+            CaptureCamera("signature_03_conductor_writing", camera);
+
+            sequence.SetStepReveal(6, 1f);
+            sequence.SetStepReveal(7, 0.58f);
+            CaptureCamera("signature_04_checker_writing", camera);
+
+            SetAllSteps(sequence, 1f);
+            CaptureCamera("signature_05_complete", camera);
         }
         finally
         {
             Object.DestroyImmediate(camera.gameObject);
         }
+    }
+
+    static void SetAllSteps(HandwrittenSignatureSequence sequence, float reveal)
+    {
+        for (int i = 0; i < 8; i++)
+            sequence.SetStepReveal(i, reveal);
     }
 
     static Camera CreateDocumentCamera(Transform documentPlane)
