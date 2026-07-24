@@ -1,0 +1,103 @@
+using System.IO;
+using UnityEditor.SceneManagement;
+using UnityEngine;
+
+public static class PPERoomSignatureDiagnostics
+{
+    const string ScenePath = "Assets/Scenes/3_PPE_Room.unity";
+    const string OutputFolder = "Logs/PPESignatureDiagnostics";
+    const int Width = 804;
+    const int Height = 1180;
+
+    public static void Capture()
+    {
+        EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
+        Directory.CreateDirectory(OutputFolder);
+
+        GameObject tablet = GameObject.Find("Tablet (1)");
+        Transform documentPlane = tablet != null ? tablet.transform.Find("GeneratedPlane") : null;
+        HandwrittenSignatureSequence sequence = documentPlane != null
+            ? documentPlane.GetComponentInChildren<HandwrittenSignatureSequence>(true)
+            : null;
+
+        if (documentPlane == null || sequence == null)
+        {
+            Debug.LogError($"PPE signature diagnostics missing references. document={documentPlane != null} sequence={sequence != null}");
+            return;
+        }
+
+        Camera camera = CreateDocumentCamera(documentPlane);
+        try
+        {
+            sequence.SetStepReveal(0, 0f);
+            sequence.SetStepReveal(1, 0f);
+            CaptureCamera("signature_00_empty", camera);
+
+            sequence.SetStepReveal(0, 0.62f);
+            sequence.SetStepReveal(1, 0f);
+            CaptureCamera("signature_01_player_writing", camera);
+
+            sequence.SetStepReveal(0, 1f);
+            sequence.SetStepReveal(1, 0.58f);
+            CaptureCamera("signature_02_conductor_writing", camera);
+
+            sequence.SetStepReveal(0, 1f);
+            sequence.SetStepReveal(1, 1f);
+            CaptureCamera("signature_03_complete", camera);
+        }
+        finally
+        {
+            Object.DestroyImmediate(camera.gameObject);
+        }
+    }
+
+    static Camera CreateDocumentCamera(Transform documentPlane)
+    {
+        Renderer renderer = documentPlane.GetComponent<Renderer>();
+        Bounds bounds = renderer.bounds;
+        Vector3 front = -documentPlane.forward.normalized;
+        float verticalSize = bounds.extents.y;
+
+        GameObject cameraObject = new("PPE_Signature_Diagnostics_Camera");
+        Camera camera = cameraObject.AddComponent<Camera>();
+        camera.orthographic = true;
+        camera.orthographicSize = verticalSize * 1.01f;
+        camera.aspect = (float)Width / Height;
+        camera.nearClipPlane = 0.01f;
+        camera.farClipPlane = 5f;
+        camera.clearFlags = CameraClearFlags.SolidColor;
+        camera.backgroundColor = new Color(0.18f, 0.2f, 0.21f, 1f);
+        camera.cullingMask = -1;
+        camera.transform.SetPositionAndRotation(
+            bounds.center + front * 0.5f,
+            Quaternion.LookRotation(-front, documentPlane.up));
+        return camera;
+    }
+
+    static void CaptureCamera(string name, Camera camera)
+    {
+        RenderTexture renderTexture = new(Width, Height, 24, RenderTextureFormat.ARGB32);
+        Texture2D texture = new(Width, Height, TextureFormat.RGBA32, false);
+        RenderTexture previousActive = RenderTexture.active;
+
+        try
+        {
+            camera.targetTexture = renderTexture;
+            camera.Render();
+            RenderTexture.active = renderTexture;
+            texture.ReadPixels(new Rect(0f, 0f, Width, Height), 0, 0);
+            texture.Apply();
+
+            string path = Path.Combine(OutputFolder, $"{name}.png");
+            File.WriteAllBytes(path, texture.EncodeToPNG());
+            Debug.Log($"PPE signature diagnostics wrote {path}");
+        }
+        finally
+        {
+            camera.targetTexture = null;
+            RenderTexture.active = previousActive;
+            Object.DestroyImmediate(renderTexture);
+            Object.DestroyImmediate(texture);
+        }
+    }
+}
