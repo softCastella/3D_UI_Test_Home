@@ -222,3 +222,47 @@ Tablet (1)
 - [ ] 서명 재생을 문서 확인 또는 승인 이벤트와 연결
 - [ ] 태블릿을 다시 확인할 때 서명 재생 여부와 초기화 정책 결정
 
+## 10. 혼합기룸 안전작업 현황판 적용
+
+### 적용 대상
+
+```text
+5_MixerRoom
+  └─ yellow_sign_board_3d_model
+      └─ GeneratedPlane
+```
+
+### 적용 내용
+
+- `Assets/UIs/Poster_guide/floor-standing safety board.png` 이미지를 안전 표지판의 `GeneratedPlane`에 적용했다.
+- 기존 Plane의 위치·회전·크기는 유지하고 비어 있던 MeshRenderer 머티리얼 슬롯만 연결했다.
+- 전용 URP Unlit 머티리얼 `Assets/Materials/MixerRoom/FloorStandingSafetyBoard_Unlit.mat`을 생성했다.
+- 원본 PNG에 포함된 짙은 회색 외곽 여백 때문에 이미지가 작게 표시되어, 머티리얼의 타일링과 오프셋으로 보드 영역만 확대했다.
+- 1차 크롭 후 좌우와 상단에 얇은 경계선이 보여 크롭 범위를 조금 더 안쪽으로 조정했다.
+- 텍스처 Wrap Mode를 `Clamp`로 변경해 필터링 시 외곽 배경색이 가장자리에 번지는 현상을 방지했다.
+
+### 최종 설정
+
+| 항목 | 값 |
+| --- | --- |
+| Base Map / Main Texture | `floor-standing safety board.png` |
+| Tiling | X `0.58`, Y `0.82` |
+| Offset | X `0.21`, Y `0.08` |
+| Wrap Mode | Clamp |
+| 셰이더 | URP Unlit |
+
+### 확인 결과
+
+- 안전작업 현황판 이미지가 노란 표지판 전면을 충분히 채우도록 표시된다.
+- 좌우와 상단에 보이던 얇은 외곽선이 제거된 것을 Scene View에서 확인했다.
+- 사용자 육안 확인 결과 현재 상태로 적용 완료했다.
+
+### 고해상도 이미지 적용
+
+- 기존 `535 × 594` 원본을 바탕으로 구성, 색상, 한글 문구를 유지한 `1190 × 1322` 고해상도 버전을 제작했다.
+- 고해상도 이미지는 `Assets/UIs/Poster_guide/floor-standing safety board_hd.png`로 추가했다.
+- 기존 원본 파일은 비교와 복구가 가능하도록 그대로 보존했다.
+- `FloorStandingSafetyBoard_Unlit.mat`의 Base Map과 Main Texture를 고해상도 이미지로 교체했다.
+- 기존 Tiling, Offset 및 Clamp 설정은 유지했다.
+- Scene View에서 확인한 결과 글자와 경계선의 선명도가 개선되어 실제 표시 품질 향상 효과가 있음을 확인했다.
+

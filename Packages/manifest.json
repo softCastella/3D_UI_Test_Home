@@ -1,7 +1,6 @@
 {
   "dependencies": {
     "com.smilejsu82.vr-base": "https://github.com/smilejsu82/vr-base-package.git",
-    "com.tripo3d.unitybridge": "file:C:/Users/user/Desktop/Tripo3d_Unity_Bridge",
     "com.unity.ai.assistant": "2.13.0-pre.2",
     "com.unity.ai.inference": "2.6.1",
     "com.unity.ai.navigation": "2.0.12",
