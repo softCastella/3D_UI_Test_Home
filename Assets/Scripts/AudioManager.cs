@@ -10,6 +10,7 @@ public sealed class AudioManager : MonoBehaviour
     private const string SceneSettingsResourcePath = "Audio/Scenes/";
 
     public static AudioManager Instance { get; private set; }
+    public float BgmVolume => bgmSource != null ? bgmSource.volume : 0f;
 
     private AudioManagerSettings settings;
     private AudioSource bgmSource;
@@ -184,6 +185,12 @@ public sealed class AudioManager : MonoBehaviour
 
     public void SetBgmVolume(float volume)
     {
+        if (bgmFadeRoutine != null)
+        {
+            StopCoroutine(bgmFadeRoutine);
+            bgmFadeRoutine = null;
+        }
+
         bgmSource.volume = Mathf.Clamp01(volume);
     }
 

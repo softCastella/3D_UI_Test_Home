@@ -7,24 +7,33 @@ public sealed class HandwrittenSignatureSequence : MonoBehaviour
     public sealed class SignatureStep
     {
         [SerializeField] Renderer targetRenderer;
+        [SerializeField] AudioClip sound;
+        [SerializeField, Range(0f, 1f)] float soundVolume = 1f;
         [SerializeField, Min(0f)] float delayBefore;
         [SerializeField, Min(0.05f)] float duration = 1.4f;
         [SerializeField] AnimationCurve revealCurve = AnimationCurve.EaseInOut(0f, 0f, 1f, 1f);
 
         public Renderer TargetRenderer => targetRenderer;
+        public AudioClip Sound => sound;
+        public float SoundVolume => soundVolume;
         public float DelayBefore => delayBefore;
         public float Duration => duration;
         public AnimationCurve RevealCurve => revealCurve;
     }
 
     [SerializeField] SignatureStep[] signatures;
+    [SerializeField] AudioSource audioSource;
     [SerializeField] bool playOnEnable = true;
     [SerializeField] bool useUnscaledTime;
     [SerializeField, Min(0f)] float initialDelay = 0.8f;
+    [SerializeField] bool duckBgmDuringPlayback = true;
+    [SerializeField, Range(0f, 1f)] float duckedBgmVolume = 0.25f;
 
     static readonly int RevealProperty = Shader.PropertyToID("_Reveal");
     MaterialPropertyBlock propertyBlock;
     Coroutine playback;
+    float previousBgmVolume;
+    bool bgmDucked;
 
     void Awake()
     {
@@ -45,6 +54,11 @@ public sealed class HandwrittenSignatureSequence : MonoBehaviour
             StopCoroutine(playback);
             playback = null;
         }
+
+        if (audioSource != null)
+            audioSource.Stop();
+
+        RestoreBgmVolume();
     }
 
     [ContextMenu("Replay Signatures")]
@@ -95,6 +109,8 @@ public sealed class HandwrittenSignatureSequence : MonoBehaviour
         if (initialDelay > 0f)
             yield return Wait(initialDelay);
 
+        DuckBgm();
+
         if (signatures != null)
         {
             for (int i = 0; i < signatures.Length; i++)
@@ -105,6 +121,9 @@ public sealed class HandwrittenSignatureSequence : MonoBehaviour
 
                 if (step.DelayBefore > 0f)
                     yield return Wait(step.DelayBefore);
+
+                if (audioSource != null && step.Sound != null)
+                    audioSource.PlayOneShot(step.Sound, step.SoundVolume);
 
                 float elapsed = 0f;
                 while (elapsed < step.Duration)
@@ -119,7 +138,28 @@ public sealed class HandwrittenSignatureSequence : MonoBehaviour
             }
         }
 
+        RestoreBgmVolume();
         playback = null;
+    }
+
+    void DuckBgm()
+    {
+        if (!duckBgmDuringPlayback || bgmDucked || AudioManager.Instance == null)
+            return;
+
+        previousBgmVolume = AudioManager.Instance.BgmVolume;
+        AudioManager.Instance.SetBgmVolume(Mathf.Min(previousBgmVolume, duckedBgmVolume));
+        bgmDucked = true;
+    }
+
+    void RestoreBgmVolume()
+    {
+        if (!bgmDucked)
+            return;
+
+        if (AudioManager.Instance != null)
+            AudioManager.Instance.SetBgmVolume(previousBgmVolume);
+        bgmDucked = false;
     }
 
     IEnumerator Wait(float duration)
