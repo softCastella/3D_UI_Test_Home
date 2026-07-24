@@ -75,14 +75,14 @@ public static class PPERoomSignatureTestBuilder
         MeshRenderer playerRenderer = CreateSignatureQuad(
             root.transform,
             "Player_Signature",
-            new Vector3(-2.64f, -1.61f, -0.25f),
-            new Vector3(2.12f, 0.34f, 1f),
+            new Vector3(-2.64f, -1.65f, -0.25f),
+            new Vector3(2f, 0.26f, 1f),
             playerMaterial);
         MeshRenderer conductorRenderer = CreateSignatureQuad(
             root.transform,
             "Conductor_Signature",
-            new Vector3(-0.03f, -1.61f, -0.25f),
-            new Vector3(2.12f, 0.34f, 1f),
+            new Vector3(-0.03f, -1.65f, -0.25f),
+            new Vector3(2f, 0.26f, 1f),
             conductorMaterial);
 
         HandwrittenSignatureSequence sequence = root.AddComponent<HandwrittenSignatureSequence>();

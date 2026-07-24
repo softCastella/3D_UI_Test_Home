@@ -56,12 +56,10 @@ public static class PPERoomSignatureDiagnostics
         Renderer renderer = documentPlane.GetComponent<Renderer>();
         Bounds bounds = renderer.bounds;
         Vector3 front = -documentPlane.forward.normalized;
-        float verticalSize = bounds.extents.y;
 
         GameObject cameraObject = new("PPE_Signature_Diagnostics_Camera");
         Camera camera = cameraObject.AddComponent<Camera>();
         camera.orthographic = true;
-        camera.orthographicSize = verticalSize * 1.01f;
         camera.aspect = (float)Width / Height;
         camera.nearClipPlane = 0.01f;
         camera.farClipPlane = 5f;
@@ -71,6 +69,24 @@ public static class PPERoomSignatureDiagnostics
         camera.transform.SetPositionAndRotation(
             bounds.center + front * 0.5f,
             Quaternion.LookRotation(-front, documentPlane.up));
+
+        Vector3[] corners =
+        {
+            documentPlane.TransformPoint(new Vector3(-5f, -2f, 0f)),
+            documentPlane.TransformPoint(new Vector3(5f, -2f, 0f)),
+            documentPlane.TransformPoint(new Vector3(-5f, 2f, 0f)),
+            documentPlane.TransformPoint(new Vector3(5f, 2f, 0f))
+        };
+        float halfWidth = 0f;
+        float halfHeight = 0f;
+        foreach (Vector3 corner in corners)
+        {
+            Vector3 cameraCorner = camera.transform.InverseTransformPoint(corner);
+            halfWidth = Mathf.Max(halfWidth, Mathf.Abs(cameraCorner.x));
+            halfHeight = Mathf.Max(halfHeight, Mathf.Abs(cameraCorner.y));
+        }
+
+        camera.orthographicSize = Mathf.Max(halfHeight, halfWidth / camera.aspect) * 1.01f;
         return camera;
     }
 

@@ -23,11 +23,12 @@ public sealed class HandwrittenSignatureSequence : MonoBehaviour
     [SerializeField, Min(0f)] float initialDelay = 0.8f;
 
     static readonly int RevealProperty = Shader.PropertyToID("_Reveal");
-    readonly MaterialPropertyBlock propertyBlock = new();
+    MaterialPropertyBlock propertyBlock;
     Coroutine playback;
 
     void Awake()
     {
+        EnsurePropertyBlock();
         ResetSignatures();
     }
 
@@ -78,9 +79,15 @@ public sealed class HandwrittenSignatureSequence : MonoBehaviour
         if (target == null)
             return;
 
+        EnsurePropertyBlock();
         target.GetPropertyBlock(propertyBlock);
         propertyBlock.SetFloat(RevealProperty, Mathf.Clamp01(reveal));
         target.SetPropertyBlock(propertyBlock);
+    }
+
+    void EnsurePropertyBlock()
+    {
+        propertyBlock ??= new MaterialPropertyBlock();
     }
 
     IEnumerator PlaySequence()
