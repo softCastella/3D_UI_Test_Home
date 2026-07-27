@@ -122,10 +122,22 @@ file:C:/Users/user/Desktop/Tripo3d_Unity_Bridge
 - 거울 표면 네 모서리를 이용해 오프축 투영 프러스텀 계산
 - 거울 레이어를 반사 카메라 Culling Mask에서 제외
 - 표면 클립 오프셋: `0.04m`
-- 반사 깊이: `12m`
+- 반사 깊이: `20m` (`12m`에서 상향, 2026-07-27)
 - 거울 크기: `1.44 × 3.3125m`
 - RenderTexture: `640 × 1472`
 - Game View와 Scene View에서 거울이 보일 때만 렌더링
+
+#### 2026-07-27 반사 깊이 보완
+
+- 증상: 거울의 뒤쪽 벽 일부가 어두운 하늘색 면으로 막힌 것처럼 표시됨
+- 원인: 거울에서 뒤쪽 벽까지 약 `15.9m`인데 반사 깊이가 `12m`여서 벽이 far
+  plane 밖으로 잘리고, 빈 영역에 반사 카메라의 청회색 `Clear Color`가 표시됨
+- 조치: 씬의 `Reflected Depth`와 `PPERoomMirrorBuilder`의 생성 기본값을 모두
+  `20m`로 변경
+- 결과: 뒤쪽 벽이 정상 반사되고 어두운 청회색 영역이 사라진 것을 사용자 육안으로
+  확인
+- 회귀 확인: 같은 증상이 보이면 실제 벽 거리, `Reflected Depth`, `Clear Color`,
+  빌더 기본값을 순서대로 비교
 
 ### 검증
 
@@ -138,6 +150,7 @@ file:C:/Users/user/Desktop/Tripo3d_Unity_Bridge
 
 - `Logs/PPEMirrorDiagnostics/mirror_close_composited.png`
 - `Logs/PPEMirrorDiagnostics/reflection_texture.png`
+- `Img/거울에 비친거.png` (2026-07-27 수정 전 증상)
 
 ### 관련 파일
 

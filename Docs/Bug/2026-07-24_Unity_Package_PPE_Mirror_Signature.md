@@ -81,6 +81,7 @@ file:C:/Users/user/Desktop/Tripo3d_Unity_Bridge
 - 카메라 가시 범위가 길어 방 밖 공간이 포함됨
 - 보호복의 앞면이 아닌 뒤쪽 시점이 보임
 - 초기 거울 크기가 요구보다 작음
+- 2026-07-27 재확인 시 거울 일부가 어두운 하늘색 면으로 막힌 것처럼 보임
 
 ### 원인 분석
 
@@ -93,6 +94,13 @@ file:C:/Users/user/Desktop/Tripo3d_Unity_Bridge
 3. 일반 카메라 FOV가 거울 개구부보다 넓은 공간을 렌더링
 4. near/far 범위가 넓어 방 밖 배경이 포함됨
 5. 반사 대상과 거울 표면의 앞뒤 기준이 일치하지 않음
+
+2026-07-27에 확인한 어두운 하늘색 영역은 실제 벽이나 별도 메시가 아니라
+반사 카메라의 `Clear Color`였다. `PlanarMirrorRenderer`는 반사 카메라의 far plane을
+거울 평면에서 `reflectedDepth`만큼만 방 안쪽으로 확장한다. 당시 씬에서 거울과
+뒤쪽 벽 사이 거리는 약 `15.9m`였지만 `reflectedDepth`가 `12m`여서 뒤쪽 벽이
+잘렸고, 렌더링되지 않은 영역에 청회색 `Clear Color (0.58, 0.68, 0.72, 1)`가
+표시됐다.
 
 ### 최종 조치
 
@@ -110,9 +118,14 @@ file:C:/Users/user/Desktop/Tripo3d_Unity_Bridge
 - 거울 레이어를 반사 카메라에서 제외
 - 거울이 원본 카메라에 보일 때만 반사 렌더링
 - 표면 클립 오프셋: `0.04m`
-- 반사 깊이: `12m`
+- 반사 깊이: `20m` (`12m`에서 상향, 2026-07-27)
 - 거울 크기: `1.44 × 3.3125m`
 - RenderTexture: `640 × 1472`
+
+`Assets/Scenes/3_PPE_Room.unity`의 직렬화 값과
+`Assets/Editor/PPERoomMirrorBuilder.cs`의 신규 생성 기본값을 모두 `20m`로
+맞췄다. 따라서 현재 씬뿐 아니라 거울을 다시 생성한 경우에도 `12m`로 회귀하지
+않는다.
 
 ### 검증 결과
 
@@ -121,11 +134,24 @@ file:C:/Users/user/Desktop/Tripo3d_Unity_Bridge
 - 보호복 반사 방향 개선
 - 하얀 판넬과 문 사이 배치 확인
 - 사용자 최종 육안 확인 완료
+- 2026-07-27 반사 깊이를 `20m`로 변경한 뒤 뒤쪽 벽이 정상 반사되고 어두운
+  청회색 차폐 영역이 사라진 것을 사용자 육안으로 확인
 
 검증 이미지:
 
 - `Logs/PPEMirrorDiagnostics/mirror_close_composited.png`
 - `Logs/PPEMirrorDiagnostics/reflection_texture.png`
+- `Img/거울에 비친거.png` (반사 깊이 부족 증상 캡처)
+
+### 같은 증상 재발 시 확인 순서
+
+1. `Mirror_Surface > PlanarMirrorRenderer > Reflected Depth`가 방의 실제 반사
+   거리보다 짧지 않은지 확인한다.
+2. 어두운 영역의 색이 `Clear Color`와 유사한지 확인한다. 유사하면 메시가 아니라
+   far plane 밖의 미렌더링 영역일 가능성이 높다.
+3. 씬의 직렬화 값과 `PPERoomMirrorBuilder`의 생성 기본값이 같은지 확인한다.
+4. 깊이를 무제한으로 늘리지 말고 필요한 벽과 오브젝트가 포함되는 최소값으로
+   조정한 뒤 Quest GPU 비용을 다시 측정한다.
 
 ### 영향 파일
 
@@ -139,6 +165,7 @@ file:C:/Users/user/Desktop/Tripo3d_Unity_Bridge
 
 - Quest/OpenXR 양안 렌더링 미검증
 - RenderTexture로 인한 Quest GPU 비용 미측정
+- 반사 깊이 증가로 더 많은 오브젝트가 렌더링될 수 있으므로 Quest 성능 재측정 필요
 - 다른 카메라 스택 또는 멀티 카메라 추가 시 재검증 필요
 
 ## 5. BUG-05: 서명 컴포넌트 UnityException
@@ -254,4 +281,3 @@ UnityEngine 객체는 `MonoBehaviour` 생성자 또는 필드 초기화 과정�
 6. 런타임 코드는 UI 상태만 변경한다.
 7. 프로젝트 전용 XR 셰이더는 Single Pass Instanced 매크로를 유지한다.
 8. 최종 판정은 Quest/OpenXR 실기기 양안 확인 후 완료한다.
-
