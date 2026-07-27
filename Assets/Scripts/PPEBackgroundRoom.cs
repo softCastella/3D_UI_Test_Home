@@ -47,7 +47,6 @@ public sealed class PPEBackgroundRoom : MonoBehaviour
         RefreshRoomMaterials(generatedRoot);
         ApplyDuctColor();
         ApplyBenchColor();
-        CreateImageDoor(transform);
 #if UNITY_EDITOR
         if (!Application.isPlaying)
             EnsurePersistentDoorMaterial();
@@ -321,7 +320,7 @@ public sealed class PPEBackgroundRoom : MonoBehaviour
         if (!glass.TryGetComponent(out DoorWindowGlass glassSize))
         {
             glassSize = glass.AddComponent<DoorWindowGlass>();
-            glassSize.Configure(0.486f, 0.78f);
+            glassSize.Configure(0.493724f, 0.744283f);
         }
 
         Material material = CreateMaterial("PPE Door Glass",
