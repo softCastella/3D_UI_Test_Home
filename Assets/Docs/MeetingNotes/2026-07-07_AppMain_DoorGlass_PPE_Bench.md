@@ -59,6 +59,8 @@
 
 ## 2. `DoorWindowGlass` — `OnValidate` 경고 수정
 
+> 2026-07-28 후속 변경: `OnEnable`/`OnValidate` 메시 재생성은 완전히 제거되었고, 명시적인 `Rebuild Glass Mesh` 컨텍스트 메뉴 방식으로 변경되었다. 현재 문·앞벽 개구부 구조와 치수는 `2026-07-28_PPE_Door_Glass_Wall_Opening.md`를 기준으로 한다.
+
 ### 증상
 
 ```
