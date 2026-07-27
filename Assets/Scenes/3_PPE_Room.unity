@@ -21945,6 +21945,7 @@ MonoBehaviour:
   ductColor: {r: 1, g: 1, b: 1, a: 1}
   benchColor: {r: 2, g: 1.96, b: 1.92, a: 1}
   roomBrightness: 1.05
+  floorBrightness: 1.111
   doorColor: {r: 0.72, g: 0.72, b: 0.72, a: 1}
   doorHeight: 2.3
   doorWallInset: 0.08
