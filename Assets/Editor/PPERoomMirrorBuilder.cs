@@ -109,7 +109,7 @@ public static class PPERoomMirrorBuilder
         serializedMirror.FindProperty("targetTexture").objectReferenceValue = renderTexture;
         serializedMirror.FindProperty("reflectedLayers").intValue = ~(1 << MirrorLayer);
         serializedMirror.FindProperty("surfaceClipOffset").floatValue = 0.04f;
-        serializedMirror.FindProperty("reflectedDepth").floatValue = 12f;
+        serializedMirror.FindProperty("reflectedDepth").floatValue = 20f;
         serializedMirror.FindProperty("clearColor").colorValue = new Color(0.58f, 0.68f, 0.72f, 1f);
         serializedMirror.FindProperty("renderInGameView").boolValue = true;
         serializedMirror.FindProperty("renderInSceneView").boolValue = true;
