@@ -10,6 +10,7 @@ public sealed class StorageWallRackMaterialPostprocessor : AssetPostprocessor
     const string TextureDirectory = "Assets/FBX/storage wall rack/storage+wall+rack.fbm";
     const string MaterialDirectory = "Assets/Materials/PPE/Storage Wall Rack";
     const string AutoReimportSessionKey = "StorageWallRackMaterialPostprocessor.AutoReimported";
+    const string ReimportInProgressSessionKey = "StorageWallRackMaterialPostprocessor.ReimportInProgress";
     const int ExpectedPartCount = 106;
 
     static readonly Regex PartIndexPattern = new Regex(
@@ -39,14 +40,27 @@ public sealed class StorageWallRackMaterialPostprocessor : AssetPostprocessor
     [MenuItem("Tools/PPE/Reimport Storage Wall Rack Materials")]
     public static void ReimportStorageWallRack()
     {
-        EnsureAllPartMaterials();
-        ApplyImporterMaterialRemaps();
-        AssetDatabase.ImportAsset(ModelPath, ImportAssetOptions.ForceUpdate | ImportAssetOptions.ImportRecursive);
-        AssetDatabase.SaveAssets();
+        if (SessionState.GetBool(ReimportInProgressSessionKey, false))
+            return;
+
+        SessionState.SetBool(ReimportInProgressSessionKey, true);
+        try
+        {
+            EnsureAllPartMaterials();
+            ApplyImporterMaterialRemaps();
+            AssetDatabase.SaveAssets();
+        }
+        finally
+        {
+            SessionState.SetBool(ReimportInProgressSessionKey, false);
+        }
     }
 
     static void AutoReimportIfMaterialsAreMissing()
     {
+        if (SessionState.GetBool(ReimportInProgressSessionKey, false))
+            return;
+
         if (SessionState.GetBool(AutoReimportSessionKey, false))
             return;
 
@@ -125,27 +139,63 @@ public sealed class StorageWallRackMaterialPostprocessor : AssetPostprocessor
         if (importer == null)
             return;
 
+        bool importerChanged = false;
+        var existingRemaps = importer.GetExternalObjectMap();
+
         for (int partIndex = 0; partIndex < ExpectedPartCount; partIndex++)
         {
             Material material = AssetDatabase.LoadAssetAtPath<Material>(GetMaterialPath(partIndex));
             if (material == null)
                 continue;
 
-            importer.AddRemap(
-                new AssetImporter.SourceAssetIdentifier(typeof(Material), $"tripo_part_{partIndex}"),
+            importerChanged |= AddMaterialRemapIfNeeded(
+                importer,
+                existingRemaps,
+                $"tripo_part_{partIndex}",
                 material);
-            importer.AddRemap(
-                new AssetImporter.SourceAssetIdentifier(typeof(Material), $"storage_wall_rack_tripo_part_{partIndex}_basecolor"),
+            importerChanged |= AddMaterialRemapIfNeeded(
+                importer,
+                existingRemaps,
+                $"storage_wall_rack_tripo_part_{partIndex}_basecolor",
                 material);
-            importer.AddRemap(
-                new AssetImporter.SourceAssetIdentifier(typeof(Material), $"storage+wall+rack_tripo_part_{partIndex}_basecolor"),
+            importerChanged |= AddMaterialRemapIfNeeded(
+                importer,
+                existingRemaps,
+                $"storage+wall+rack_tripo_part_{partIndex}_basecolor",
                 material);
         }
 
-        importer.materialImportMode = ModelImporterMaterialImportMode.ImportViaMaterialDescription;
-        importer.materialLocation = ModelImporterMaterialLocation.External;
+        if (importer.materialImportMode != ModelImporterMaterialImportMode.ImportViaMaterialDescription)
+        {
+            importer.materialImportMode = ModelImporterMaterialImportMode.ImportViaMaterialDescription;
+            importerChanged = true;
+        }
+
+        if (importer.materialLocation != ModelImporterMaterialLocation.InPrefab)
+        {
+            importer.materialLocation = ModelImporterMaterialLocation.InPrefab;
+            importerChanged = true;
+        }
+
+        if (!importerChanged)
+            return;
+
         EditorUtility.SetDirty(importer);
         importer.SaveAndReimport();
+    }
+
+    static bool AddMaterialRemapIfNeeded(
+        ModelImporter importer,
+        System.Collections.Generic.IDictionary<AssetImporter.SourceAssetIdentifier, Object> existingRemaps,
+        string sourceMaterialName,
+        Material material)
+    {
+        var sourceIdentifier = new AssetImporter.SourceAssetIdentifier(typeof(Material), sourceMaterialName);
+        if (existingRemaps.TryGetValue(sourceIdentifier, out Object existingObject) && existingObject == material)
+            return false;
+
+        importer.AddRemap(sourceIdentifier, material);
+        return true;
     }
 
     static bool TryGetPartIndex(string value, out int partIndex)
