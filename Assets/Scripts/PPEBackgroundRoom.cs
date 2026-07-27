@@ -28,6 +28,7 @@ public sealed class PPEBackgroundRoom : MonoBehaviour
     [SerializeField] private Color benchColor = new(2f, 1.96f, 1.92f, 1f);
     [Header("Room Lighting")]
     [SerializeField, Range(0f, 2f)] private float roomBrightness = 1f;
+    [SerializeField, Range(0f, 2f)] private float floorBrightness = 1f;
     [Header("Door Appearance")]
     [SerializeField] private Color doorColor = new(0.72f, 0.72f, 0.72f, 1f);
     [SerializeField, Min(0.5f)] private float doorHeight = 2.3f;
@@ -63,7 +64,7 @@ public sealed class PPEBackgroundRoom : MonoBehaviour
     private void RefreshRoomMaterials(Transform root)
     {
         Material wallMaterial = CreateMaterial("PPE Wall", wallColor * roomBrightness, wallTexture);
-        Material floorMaterial = CreateMaterial("PPE Floor", floorColor * roomBrightness, floorTexture);
+        Material floorMaterial = CreateMaterial("PPE Floor", GetFloorColor() * roomBrightness, floorTexture);
         Material ceilingMaterial = CreateMaterial(
             "PPE Ceiling", ceilingColor * roomBrightness, ceilingTexture);
 
@@ -105,7 +106,7 @@ public sealed class PPEBackgroundRoom : MonoBehaviour
         root.transform.SetParent(transform, false);
 
         Material wallMaterial = CreateMaterial("PPE Wall", wallColor * roomBrightness, wallTexture);
-        Material floorMaterial = CreateMaterial("PPE Floor", floorColor * roomBrightness, floorTexture);
+        Material floorMaterial = CreateMaterial("PPE Floor", GetFloorColor() * roomBrightness, floorTexture);
         Material ceilingMaterial = CreateMaterial(
             "PPE Ceiling", ceilingColor * roomBrightness, ceilingTexture);
 
@@ -144,7 +145,7 @@ public sealed class PPEBackgroundRoom : MonoBehaviour
         ApplySurfaceBrightness(root, "Rear Wall", wallColor);
         ApplySurfaceBrightness(root, "Left Wall", wallColor);
         ApplySurfaceBrightness(root, "Right Wall", wallColor);
-        ApplySurfaceBrightness(root, "Floor", floorColor);
+        ApplySurfaceBrightness(root, "Floor", GetFloorColor());
         ApplySurfaceBrightness(root, "Ceiling", ceilingColor);
     }
 
@@ -181,6 +182,11 @@ public sealed class PPEBackgroundRoom : MonoBehaviour
                 renderer.SetPropertyBlock(propertyBlock);
             }
         }
+    }
+
+    private Color GetFloorColor()
+    {
+        return floorColor * floorBrightness;
     }
 
     private void ApplySurfaceBrightness(Transform root, string objectName, Color baseColor)
