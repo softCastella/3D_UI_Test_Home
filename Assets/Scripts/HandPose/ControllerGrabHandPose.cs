@@ -1,10 +1,14 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Scripting.APIUpdating;
 using UnityEngine.XR.Hands;
 using UnityEngine.XR.Interaction.Toolkit;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
 using UnityEngine.XR.Interaction.Toolkit.Interactors;
+using ProjectHandPoseData = ThreeDUI.HandPoses.HandPoseData;
 
+namespace ThreeDUI.HandPoses
+{
 /// <summary>
 /// Bends the controller hand into the captured grab pose while it is holding something, so the live hand
 /// matches the ghost that was recorded on that object.
@@ -14,6 +18,7 @@ using UnityEngine.XR.Interaction.Toolkit.Interactors;
 /// authoring step - there is no second list of poses to keep in sync with the ghosts, and an object with no
 /// ghost for this hand simply keeps its normal animation.
 /// </summary>
+[MovedFrom(true, null, "Assembly-CSharp", "ControllerGrabHandPose")]
 [DisallowMultipleComponent]
 public class ControllerGrabHandPose : MonoBehaviour
 {
@@ -98,7 +103,7 @@ public class ControllerGrabHandPose : MonoBehaviour
     /// inactive objects, because a ghost is usually left hidden - it is a marker for authoring, not
     /// something the player should see.
     /// </summary>
-    HandPoseData FindPose(IXRSelectInteractable interactable)
+    ProjectHandPoseData FindPose(IXRSelectInteractable interactable)
     {
         if (interactable?.transform == null)
             return null;
@@ -113,7 +118,7 @@ public class ControllerGrabHandPose : MonoBehaviour
         return null;
     }
 
-    void ApplyPose(HandPoseData pose)
+    void ApplyPose(ProjectHandPoseData pose)
     {
         if (m_HandRoot == null)
         {
@@ -168,4 +173,5 @@ public class ControllerGrabHandPose : MonoBehaviour
 
         m_PoseApplied = false;
     }
+}
 }

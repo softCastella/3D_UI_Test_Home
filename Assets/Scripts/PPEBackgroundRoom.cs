@@ -11,9 +11,10 @@ public sealed class PPEBackgroundRoom : MonoBehaviour
 {
     private const string GeneratedRootName = "Generated Image Room";
 
-    [SerializeField] private Texture2D wallTexture;
-    [SerializeField] private Texture2D floorTexture;
-    [SerializeField] private Texture2D ceilingTexture;
+    [Header("Room Materials")]
+    [SerializeField] private Material wallMaterial;
+    [SerializeField] private Material floorMaterial;
+    [SerializeField] private Material ceilingMaterial;
     [SerializeField] private Texture2D doorTexture;
     [SerializeField] private Shader doorCutoutShader;
     [SerializeField, Min(1f)] private float roomWidth = 25f;
@@ -37,14 +38,13 @@ public sealed class PPEBackgroundRoom : MonoBehaviour
     private void OnEnable()
     {
         Transform generatedRoot = transform.Find(GeneratedRootName);
-        if (generatedRoot == null)
+        if (generatedRoot != null)
         {
-            BuildRoom();
-            return;
+            SetHideFlagsRecursively(generatedRoot, HideFlags.None);
+            RestoreMissingRoomMaterials(generatedRoot);
         }
 
-        SetHideFlagsRecursively(generatedRoot, HideFlags.None);
-        RefreshRoomMaterials(generatedRoot);
+        ApplyRoomBrightness();
         ApplyDuctColor();
         ApplyBenchColor();
 #if UNITY_EDITOR
@@ -55,35 +55,55 @@ public sealed class PPEBackgroundRoom : MonoBehaviour
 
     private void OnValidate()
     {
+        Transform generatedRoot = transform.Find(GeneratedRootName);
+        if (generatedRoot != null)
+            RestoreMissingRoomMaterials(generatedRoot);
+
         ApplyRoomBrightness();
         ApplyDuctColor();
         ApplyBenchColor();
     }
 
-    private void RefreshRoomMaterials(Transform root)
+    private void RestoreMissingRoomMaterials(Transform root)
     {
-        Material wallMaterial = CreateMaterial("PPE Wall", wallColor * roomBrightness, wallTexture);
-        Material floorMaterial = CreateMaterial("PPE Floor", GetFloorColor() * roomBrightness, floorTexture);
-        Material ceilingMaterial = CreateMaterial(
-            "PPE Ceiling", ceilingColor * roomBrightness, ceilingTexture);
+#if UNITY_EDITOR
+        // An already-open scene can temporarily retain its old in-memory serialization
+        // after these persistent assets are added on disk. Resolve only missing fields;
+        // authored Inspector references remain authoritative.
+        wallMaterial ??= UnityEditor.AssetDatabase.LoadAssetAtPath<Material>(
+            "Assets/Materials/PPE/PPE_Room_Wall.mat");
+        floorMaterial ??= UnityEditor.AssetDatabase.LoadAssetAtPath<Material>(
+            "Assets/Materials/PPE/PPE_Room_Floor.mat");
+        ceilingMaterial ??= UnityEditor.AssetDatabase.LoadAssetAtPath<Material>(
+            "Assets/Materials/PPE/PPE_Room_Ceiling.mat");
+#endif
 
-        AssignMaterial(root, "Front Wall", wallMaterial);
-        AssignMaterial(root, "Rear Wall", wallMaterial);
-        AssignMaterial(root, "Left Wall", wallMaterial);
-        AssignMaterial(root, "Right Wall", wallMaterial);
-        AssignMaterial(root, "Floor", floorMaterial);
-        AssignMaterial(root, "Ceiling", ceilingMaterial);
+        AssignMissingMaterial(root, "Front Wall", wallMaterial);
+        AssignMissingMaterial(root, "Rear Wall", wallMaterial);
+        AssignMissingMaterial(root, "Left Wall", wallMaterial);
+        AssignMissingMaterial(root, "Right Wall", wallMaterial);
+        AssignMissingMaterial(root, "Floor", floorMaterial);
+        AssignMissingMaterial(root, "Ceiling", ceilingMaterial);
     }
 
-    private static void AssignMaterial(Transform root, string objectName, Material material)
+    private static void AssignMissingMaterial(Transform root, string objectName, Material material)
     {
-        foreach (Transform child in root)
+        if (material == null)
+            return;
+
+        foreach (Transform surface in root)
         {
-            if (!MatchesSurfaceName(child.name, objectName))
+            if (!MatchesSurfaceName(surface.name, objectName)
+                || !surface.TryGetComponent(out MeshRenderer renderer))
                 continue;
 
-            if (child.TryGetComponent(out MeshRenderer renderer))
-                renderer.sharedMaterial = material;
+            Material currentMaterial = renderer.sharedMaterial;
+            bool materialIsTransient = currentMaterial != null
+                && (currentMaterial.hideFlags & HideFlags.DontSave) != 0;
+            if (currentMaterial != null && !materialIsTransient)
+                continue;
+
+            renderer.sharedMaterial = material;
         }
     }
 
@@ -111,6 +131,12 @@ public sealed class PPEBackgroundRoom : MonoBehaviour
     [ContextMenu("Rebuild Room")]
     public void BuildRoom()
     {
+        if (wallMaterial == null || floorMaterial == null || ceilingMaterial == null)
+        {
+            Debug.LogError("Cannot rebuild PPE room because its serialized room materials are missing.", this);
+            return;
+        }
+
         Transform previous = transform.Find(GeneratedRootName);
         if (previous != null)
         {
@@ -122,11 +148,6 @@ public sealed class PPEBackgroundRoom : MonoBehaviour
 
         GameObject root = new(GeneratedRootName);
         root.transform.SetParent(transform, false);
-
-        Material wallMaterial = CreateMaterial("PPE Wall", wallColor * roomBrightness, wallTexture);
-        Material floorMaterial = CreateMaterial("PPE Floor", GetFloorColor() * roomBrightness, floorTexture);
-        Material ceilingMaterial = CreateMaterial(
-            "PPE Ceiling", ceilingColor * roomBrightness, ceilingTexture);
 
         CreateWall(root.transform, "Front Wall", new Vector3(0f, roomHeight * 0.5f, roomDepth * 0.5f),
             new Vector3(0f, 180f, 0f), new Vector2(roomWidth, roomHeight), wallMaterial);
@@ -209,19 +230,20 @@ public sealed class PPEBackgroundRoom : MonoBehaviour
 
     private void ApplySurfaceBrightness(Transform root, string objectName, Color baseColor)
     {
-        Transform surface = root.Find(objectName);
-        if (surface == null || !surface.TryGetComponent(out MeshRenderer renderer))
-            return;
-
-        Material material = renderer.sharedMaterial;
-        if (material == null)
-            return;
-
         Color adjustedColor = baseColor * roomBrightness;
-        if (material.HasProperty("_BaseColor"))
-            material.SetColor("_BaseColor", adjustedColor);
-        else
-            material.color = adjustedColor;
+        foreach (Transform surface in root)
+        {
+            bool matchesSurface = surface.name == objectName
+                || surface.name.StartsWith(objectName + " (");
+            if (!matchesSurface || !surface.TryGetComponent(out MeshRenderer renderer))
+                continue;
+
+            MaterialPropertyBlock propertyBlock = new();
+            renderer.GetPropertyBlock(propertyBlock);
+            propertyBlock.SetColor("_BaseColor", adjustedColor);
+            propertyBlock.SetColor("_Color", adjustedColor);
+            renderer.SetPropertyBlock(propertyBlock);
+        }
     }
 
     private void CreateImageDoor(Transform parent)

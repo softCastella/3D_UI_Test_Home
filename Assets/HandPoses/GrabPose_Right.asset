@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 33864ff9d40ede6478be975dd6921cd1, type: 3}
   m_Name: GrabPose_Right
-  m_EditorClassIdentifier: Assembly-CSharp::HandPoseData
+  m_EditorClassIdentifier: Assembly-CSharp::ThreeDUI.HandPoses.HandPoseData
   handedness: 2
   hasAttachPose: 1
   attachLocalPosition: {x: 0.10018153, y: -0.0007392276, z: -0.14055267}

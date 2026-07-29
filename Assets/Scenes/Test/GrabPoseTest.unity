@@ -1524,7 +1524,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: dba0fb5e4840d524ba35bf1262d550b0, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ControllerGrabHandPose
+  m_EditorClassIdentifier: Assembly-CSharp::ThreeDUI.HandPoses.ControllerGrabHandPose
   m_Interactor: {fileID: 295385638}
   m_HandAnimator: {fileID: 1776506544}
   m_HandRoot: {fileID: 1776506541}
@@ -2841,7 +2841,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: dba0fb5e4840d524ba35bf1262d550b0, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ControllerGrabHandPose
+  m_EditorClassIdentifier: Assembly-CSharp::ThreeDUI.HandPoses.ControllerGrabHandPose
   m_Interactor: {fileID: 1932904076}
   m_HandAnimator: {fileID: 1290219337}
   m_HandRoot: {fileID: 1290219334}

@@ -3,6 +3,7 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.XR.Hands;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
+using ProjectHandPoseData = ThreeDUI.HandPoses.HandPoseData;
 
 /// <summary>
 /// Captures a grab pose from hand tracking: freezes the shape your hand is currently making, drops a ghost
@@ -30,7 +31,7 @@ public class GhostHandPoseWindow : EditorWindow
     [SerializeField] GameObject m_GhostOverride;
     [SerializeField] string m_SaveFolder = "Assets/HandPoses";
     [SerializeField] string m_PrefabFolder = "Assets/HandPoses/Prefabs";
-    [SerializeField] HandPoseData m_ApplySource;
+    [SerializeField] ProjectHandPoseData m_ApplySource;
 
     string PoseName => string.IsNullOrWhiteSpace(m_PoseName) ? "GrabPose" : m_PoseName;
 
@@ -117,7 +118,8 @@ public class GhostHandPoseWindow : EditorWindow
     {
         EditorGUILayout.LabelField("Apply to scene (after Play)", EditorStyles.boldLabel);
 
-        m_ApplySource = (HandPoseData)EditorGUILayout.ObjectField("Pose", m_ApplySource, typeof(HandPoseData), false);
+        m_ApplySource = (ProjectHandPoseData)EditorGUILayout.ObjectField(
+            "Pose", m_ApplySource, typeof(ProjectHandPoseData), false);
 
         if (Application.isPlaying)
             EditorGUILayout.HelpBox("Scene changes made in Play mode are discarded. Exit Play, then apply.", MessageType.Warning);
@@ -233,7 +235,7 @@ public class GhostHandPoseWindow : EditorWindow
     /// the object half the hand poses in the wrong place, without the hand half the ghost is right and the
     /// real hand ignores it.
     /// </summary>
-    void Apply(HandPoseData data, Transform target)
+    void Apply(ProjectHandPoseData data, Transform target)
     {
         var ghost = SpawnGhost(data, target);
         var attach = EnsureAttachTransform(data, target, ghost);
@@ -299,7 +301,7 @@ public class GhostHandPoseWindow : EditorWindow
     /// Reads the driver's current joint rotations, and the wrist's pose expressed in the target's local
     /// space. Local space rather than world, so the pose still holds after the object is moved.
     /// </summary>
-    HandPoseData BuildPoseData(XRHandSkeletonDriver driver, Transform target)
+    ProjectHandPoseData BuildPoseData(XRHandSkeletonDriver driver, Transform target)
     {
         var references = driver.jointTransformReferences;
         if (references == null || references.Count == 0)
@@ -308,7 +310,7 @@ public class GhostHandPoseWindow : EditorWindow
             return null;
         }
 
-        var data = CreateInstance<HandPoseData>();
+        var data = CreateInstance<ProjectHandPoseData>();
         data.handedness = m_Handedness;
 
         foreach (var reference in references)
@@ -317,7 +319,7 @@ public class GhostHandPoseWindow : EditorWindow
             if (joint == null)
                 continue;
 
-            data.joints.Add(new HandPoseData.JointPose
+            data.joints.Add(new ProjectHandPoseData.JointPose
             {
                 jointID = reference.xrHandJointID,
                 localPosition = joint.localPosition,
@@ -336,7 +338,7 @@ public class GhostHandPoseWindow : EditorWindow
         return data;
     }
 
-    HandPoseData SavePoseAsset(HandPoseData data)
+    ProjectHandPoseData SavePoseAsset(ProjectHandPoseData data)
     {
         EnsureFolder(m_SaveFolder);
         var name = string.IsNullOrWhiteSpace(m_PoseName) ? "GrabPose" : m_PoseName;
@@ -351,7 +353,7 @@ public class GhostHandPoseWindow : EditorWindow
     /// <see cref="GhostHandPose"/> do the posing - the same path a ghost takes when it is re-applied later,
     /// so a captured hand and a re-spawned one cannot drift apart.
     /// </summary>
-    GameObject SpawnGhost(HandPoseData data, Transform target)
+    GameObject SpawnGhost(ProjectHandPoseData data, Transform target)
     {
         var prefab = m_GhostOverride != null ? m_GhostOverride : LoadGhostPrefab(data.handedness);
         if (prefab == null)
@@ -411,7 +413,7 @@ public class GhostHandPoseWindow : EditorWindow
     /// wrist": this one on the object, the live hand's on the interactor's Transform To Follow. Nudge the
     /// ghost afterwards and the grab point follows; a copied pose would have to be re-captured.
     /// </summary>
-    static Transform EnsureAttachTransform(HandPoseData data, Transform target, GameObject ghost)
+    static Transform EnsureAttachTransform(ProjectHandPoseData data, Transform target, GameObject ghost)
     {
         if (ghost == null)
             return null;

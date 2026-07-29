@@ -1,11 +1,12 @@
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using ProjectControllerGrabHandPose = ThreeDUI.HandPoses.ControllerGrabHandPose;
 using UnityEngine.XR.Hands;
 using UnityEngine.XR.Interaction.Toolkit.Interactors;
 
 /// <summary>
-/// Puts <see cref="ControllerGrabHandPose"/> on the controller hands and fills in its references, so a
+/// Puts <see cref="ProjectControllerGrabHandPose"/> on the controller hands and fills in its references, so a
 /// captured grab pose shows up on the real hand without anyone hunting through the rig.
 ///
 /// A menu item rather than a button in Ghost Hand Recorder: this is rig setup done once per scene, while
@@ -57,9 +58,9 @@ static class ControllerGrabHandPoseInstaller
 
     static bool Install(Transform controller, Handedness handedness)
     {
-        var poser = controller.GetComponent<ControllerGrabHandPose>();
+        var poser = controller.GetComponent<ProjectControllerGrabHandPose>();
         if (poser == null)
-            poser = Undo.AddComponent<ControllerGrabHandPose>(controller.gameObject);
+            poser = Undo.AddComponent<ProjectControllerGrabHandPose>(controller.gameObject);
 
         var interactor = controller.GetComponentInChildren<XRBaseInteractor>(true);
         var animator = controller.GetComponentInChildren<Animator>(true);

@@ -1,9 +1,10 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.XR.Hands;
+using ProjectHandPoseData = ThreeDUI.HandPoses.HandPoseData;
 
 /// <summary>
-/// Puts a captured <see cref="HandPoseData"/> onto the ghost hand skeleton it is attached to.
+/// Puts a captured <see cref="ProjectHandPoseData"/> onto the ghost hand skeleton it is attached to.
 ///
 /// The component carries the pose asset rather than the pose being baked into the prefab's transforms, so
 /// the shape stays editable after the fact: retouch the asset, hit Apply, and every ghost using it follows.
@@ -17,9 +18,9 @@ public class GhostHandPose : MonoBehaviour
 {
     [SerializeField]
     [Tooltip("The captured pose this ghost shows.")]
-    HandPoseData m_Pose;
+    ProjectHandPoseData m_Pose;
 
-    public HandPoseData pose
+    public ProjectHandPoseData pose
     {
         get => m_Pose;
         set => m_Pose = value;
