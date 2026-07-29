@@ -24,9 +24,9 @@ public sealed class XRLocationTeleportTarget : UnityEngine.XR.Interaction.Toolki
             xrOrigin = FindFirstObjectByType<XROrigin>();
     }
 
-    protected override void OnSelectEntered(SelectEnterEventArgs args)
+    protected override void OnActivated(ActivateEventArgs args)
     {
-        base.OnSelectEntered(args);
+        base.OnActivated(args);
         Teleport();
     }
 

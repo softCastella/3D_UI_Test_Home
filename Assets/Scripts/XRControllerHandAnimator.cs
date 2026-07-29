@@ -32,22 +32,44 @@ public sealed class XRControllerHandAnimator : MonoBehaviour
 
     void Awake()
     {
-        if (controllerVisual != null)
-            controllerVisual.SetActive(false);
+        GameObject hand = FindAuthoredHandVisual();
+        if (hand == null)
+        {
+            if (controllerVisual != null)
+                controllerVisual.SetActive(false);
 
-        if (handModelPrefab == null)
-            return;
+            if (handModelPrefab == null)
+                return;
 
-        var hand = Instantiate(handModelPrefab, transform);
-        hand.name = controllerNode == XRNode.LeftHand ? "Left Controller Hand Visual" : "Right Controller Hand Visual";
-        hand.transform.SetLocalPositionAndRotation(localPosition, Quaternion.Euler(localEulerAngles));
-        hand.transform.localScale = localScale;
+            hand = Instantiate(handModelPrefab, transform);
+            hand.name = controllerNode == XRNode.LeftHand ? "Left Controller Hand Visual" : "Right Controller Hand Visual";
+            hand.transform.SetLocalPositionAndRotation(localPosition, Quaternion.Euler(localEulerAngles));
+            hand.transform.localScale = localScale;
+        }
 
         CacheFinger(hand.transform, "Index", triggerBones);
         CacheFinger(hand.transform, "Middle", gripBones);
         CacheFinger(hand.transform, "Ring", gripBones);
         CacheFinger(hand.transform, "Little", gripBones);
         CacheFinger(hand.transform, "Thumb", thumbBones);
+    }
+
+    GameObject FindAuthoredHandVisual()
+    {
+        if (controllerVisual == null)
+            return null;
+
+        string authoredName = controllerNode == XRNode.LeftHand
+            ? "LeftHand_BareHand"
+            : "RightHand_BareHand";
+        Transform authoredHand = FindChild(controllerVisual.transform, authoredName);
+        if (authoredHand == null)
+            return null;
+
+        // Scene-authored hand hierarchy, Transform, and materials are authoritative.
+        // Keep the controller visuals active and animate the existing rig in place.
+        controllerVisual.SetActive(true);
+        return authoredHand.gameObject;
     }
 
     void Update()

@@ -104,10 +104,15 @@ Apply these rules to project-owned hand-written shaders used by world-space UI, 
 - `[ExecuteAlways]`, `OnEnable`, and `OnValidate` code must not delete and recreate scene-authored geometry or overwrite child Transform values automatically.
 - Procedural rebuild operations must be explicit editor commands or context-menu actions. After generation, the serialized scene hierarchy and Inspector values are authoritative.
 - If runtime-only material recovery is necessary, separate it from geometry generation. Reapply materials to existing renderers without rebuilding meshes, hierarchy, positions, rotations, or scales.
+- `PPEBackgroundRoom` intentionally creates room-surface materials with `HideFlags.DontSave`. A serialized `m_Materials` entry of `{fileID: 0}` on its generated room surfaces is therefore not sufficient evidence of a broken material; inspect the live Renderer after `OnEnable` has run.
+- Scene-authored PPE room continuation surfaces named `Rear Wall (n)`, `Floor (n)`, or `Ceiling (n)` must participate in the same material recovery as their unnumbered source surface. Preserve their authored Transforms and do not rebuild the room to repair a missing material.
+- After changing PPE room material recovery, run `Tools > PPE > Validate Room Surface Materials` or invoke `PPERoomMaterialRecoveryHarness.Validate` with Unity batch mode.
 
 ## Validation
 
 For code changes, check for C# compilation errors and inspect Unity logs when available. For UI changes, compare relevant serialized values before and after entering Play Mode and verify that no unintended runtime assignment changes them. For scene, prefab, shader, XR, or rendering changes, explain any verification that still requires opening Unity or testing on a headset.
+
+For a reproducible project-owned regression, add a dated report under `Docs/Bug` and add or extend an Editor validation harness when the failure can be checked deterministically.
 
 ## Session startup
 

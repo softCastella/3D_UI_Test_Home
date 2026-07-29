@@ -93,9 +93,8 @@ public sealed class PPEBackgroundRoom : MonoBehaviour
 
         foreach (Transform surface in root)
         {
-            bool matchesSurface = surface.name == objectName
-                || surface.name.StartsWith(objectName + " (");
-            if (!matchesSurface || !surface.TryGetComponent(out MeshRenderer renderer))
+            if (!MatchesSurfaceName(surface.name, objectName)
+                || !surface.TryGetComponent(out MeshRenderer renderer))
                 continue;
 
             Material currentMaterial = renderer.sharedMaterial;
@@ -106,6 +105,20 @@ public sealed class PPEBackgroundRoom : MonoBehaviour
 
             renderer.sharedMaterial = material;
         }
+    }
+
+    private static bool MatchesSurfaceName(string candidateName, string baseName)
+    {
+        if (candidateName == baseName)
+            return true;
+
+        string copyPrefix = baseName + " (";
+        if (!candidateName.StartsWith(copyPrefix) || !candidateName.EndsWith(")"))
+            return false;
+
+        string copyNumber = candidateName.Substring(
+            copyPrefix.Length, candidateName.Length - copyPrefix.Length - 1);
+        return int.TryParse(copyNumber, out int copyIndex) && copyIndex > 0;
     }
 
     private static void SetHideFlagsRecursively(Transform target, HideFlags flags)
