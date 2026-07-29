@@ -77,9 +77,28 @@ public sealed class PPEBackgroundRoom : MonoBehaviour
 
     private static void AssignMaterial(Transform root, string objectName, Material material)
     {
-        Transform child = root.Find(objectName);
-        if (child != null && child.TryGetComponent(out MeshRenderer renderer))
-            renderer.sharedMaterial = material;
+        foreach (Transform child in root)
+        {
+            if (!MatchesSurfaceName(child.name, objectName))
+                continue;
+
+            if (child.TryGetComponent(out MeshRenderer renderer))
+                renderer.sharedMaterial = material;
+        }
+    }
+
+    private static bool MatchesSurfaceName(string candidateName, string baseName)
+    {
+        if (candidateName == baseName)
+            return true;
+
+        string copyPrefix = baseName + " (";
+        if (!candidateName.StartsWith(copyPrefix) || !candidateName.EndsWith(")"))
+            return false;
+
+        string copyNumber = candidateName.Substring(
+            copyPrefix.Length, candidateName.Length - copyPrefix.Length - 1);
+        return int.TryParse(copyNumber, out int copyIndex) && copyIndex > 0;
     }
 
     private static void SetHideFlagsRecursively(Transform target, HideFlags flags)
