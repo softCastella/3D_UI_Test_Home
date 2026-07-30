@@ -95,6 +95,42 @@ public sealed class SciFiCardVisual : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Recreates only missing generated meshes. Authored transforms, materials, colors, visibility,
+    /// and collider values are left unchanged.
+    /// </summary>
+    public int RebuildMissingMeshes()
+    {
+        var safeSize = new Vector2(Mathf.Max(0.001f, size.x), Mathf.Max(0.001f, size.y));
+        var safeRadius = Mathf.Clamp(cornerRadius, 0f, Mathf.Min(safeSize.x, safeSize.y) * 0.5f);
+        var rebuiltCount = 0;
+
+        rebuiltCount += RebuildMissingRoundedMesh(shadowFilter, safeSize * shadowScale, safeRadius * shadowScale);
+        rebuiltCount += RebuildMissingRoundedMesh(backplateFilter, safeSize + Vector2.one * backplateExpansion,
+            safeRadius + backplateExpansion * 0.5f);
+        rebuiltCount += RebuildMissingRoundedMesh(glassFilter, safeSize, safeRadius);
+        rebuiltCount += RebuildMissingRoundedMesh(edgeFilter, safeSize + Vector2.one * edgeExpansion,
+            safeRadius + edgeExpansion * 0.5f);
+        rebuiltCount += RebuildMissingFrameMesh(frameFilter, safeSize, safeRadius,
+            Mathf.Min(frameWidth, Mathf.Min(safeSize.x, safeSize.y) * 0.2f), frameThickness);
+
+        var markerData = BuildMarkerData(safeSize);
+        if (cornerMarkerFilters != null)
+        {
+            for (var i = 0; i < cornerMarkerFilters.Length && i < markerData.Length; i++)
+                rebuiltCount += RebuildMissingQuadMesh(cornerMarkerFilters[i], markerData[i].size);
+        }
+
+        return rebuiltCount;
+    }
+
+    [ContextMenu("Rebuild Missing Card Meshes")]
+    void RebuildMissingMeshesFromContextMenu()
+    {
+        var rebuiltCount = RebuildMissingMeshes();
+        Debug.Log($"Rebuilt {rebuiltCount} missing mesh(es) for '{name}'.", this);
+    }
+
     void ApplyFrame(Vector2 safeSize, float safeRadius)
     {
         if (frameFilter != null)
@@ -135,23 +171,7 @@ public sealed class SciFiCardVisual : MonoBehaviour
         if (cornerMarkerRenderers == null)
             cornerMarkerRenderers = new MeshRenderer[0];
 
-        var halfX = safeSize.x * 0.5f;
-        var halfY = safeSize.y * 0.5f;
-        var length = Mathf.Min(cornerLength, Mathf.Min(safeSize.x, safeSize.y) * 0.45f);
-        var thickness = Mathf.Min(cornerThickness, length);
-        var inset = cornerInset;
-
-        var markerData = new[]
-        {
-            new Marker(new Vector2(-halfX + inset + length * 0.5f, halfY - inset), new Vector2(length, thickness)),
-            new Marker(new Vector2(-halfX + inset, halfY - inset - length * 0.5f), new Vector2(thickness, length)),
-            new Marker(new Vector2(halfX - inset - length * 0.5f, halfY - inset), new Vector2(length, thickness)),
-            new Marker(new Vector2(halfX - inset, halfY - inset - length * 0.5f), new Vector2(thickness, length)),
-            new Marker(new Vector2(-halfX + inset + length * 0.5f, -halfY + inset), new Vector2(length, thickness)),
-            new Marker(new Vector2(-halfX + inset, -halfY + inset + length * 0.5f), new Vector2(thickness, length)),
-            new Marker(new Vector2(halfX - inset - length * 0.5f, -halfY + inset), new Vector2(length, thickness)),
-            new Marker(new Vector2(halfX - inset, -halfY + inset + length * 0.5f), new Vector2(thickness, length))
-        };
+        var markerData = BuildMarkerData(safeSize);
 
         for (var i = 0; i < cornerMarkerFilters.Length; i++)
         {
@@ -171,6 +191,54 @@ public sealed class SciFiCardVisual : MonoBehaviour
                 ApplyColor(renderer.sharedMaterial, cornerColor, cornerOpacity);
             }
         }
+    }
+
+    Marker[] BuildMarkerData(Vector2 safeSize)
+    {
+        var halfX = safeSize.x * 0.5f;
+        var halfY = safeSize.y * 0.5f;
+        var length = Mathf.Min(cornerLength, Mathf.Min(safeSize.x, safeSize.y) * 0.45f);
+        var thickness = Mathf.Min(cornerThickness, length);
+        var inset = cornerInset;
+
+        return new[]
+        {
+            new Marker(new Vector2(-halfX + inset + length * 0.5f, halfY - inset), new Vector2(length, thickness)),
+            new Marker(new Vector2(-halfX + inset, halfY - inset - length * 0.5f), new Vector2(thickness, length)),
+            new Marker(new Vector2(halfX - inset - length * 0.5f, halfY - inset), new Vector2(length, thickness)),
+            new Marker(new Vector2(halfX - inset, halfY - inset - length * 0.5f), new Vector2(thickness, length)),
+            new Marker(new Vector2(-halfX + inset + length * 0.5f, -halfY + inset), new Vector2(length, thickness)),
+            new Marker(new Vector2(-halfX + inset, -halfY + inset + length * 0.5f), new Vector2(thickness, length)),
+            new Marker(new Vector2(halfX - inset - length * 0.5f, -halfY + inset), new Vector2(length, thickness)),
+            new Marker(new Vector2(halfX - inset, -halfY + inset + length * 0.5f), new Vector2(thickness, length))
+        };
+    }
+
+    int RebuildMissingRoundedMesh(MeshFilter filter, Vector2 meshSize, float radius)
+    {
+        if (filter == null || filter.sharedMesh != null)
+            return 0;
+
+        BuildRoundedMesh(EnsureMesh(filter, filter.name + "_Mesh"), meshSize, radius);
+        return 1;
+    }
+
+    int RebuildMissingFrameMesh(MeshFilter filter, Vector2 meshSize, float radius, float width, float thickness)
+    {
+        if (filter == null || filter.sharedMesh != null)
+            return 0;
+
+        BuildRoundedFrameMesh(EnsureMesh(filter, filter.name + "_Mesh"), meshSize, radius, width, thickness);
+        return 1;
+    }
+
+    static int RebuildMissingQuadMesh(MeshFilter filter, Vector2 meshSize)
+    {
+        if (filter == null || filter.sharedMesh != null)
+            return 0;
+
+        BuildQuadMesh(EnsureMesh(filter, filter.name + "_Mesh"), meshSize);
+        return 1;
     }
 
     static Mesh EnsureMesh(MeshFilter filter, string meshName)

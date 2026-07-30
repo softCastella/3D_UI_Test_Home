@@ -7,7 +7,6 @@ using UnityEngine.InputSystem;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
-using UnityEngine.XR;
 using UnityEngine.XR.Interaction.Toolkit;
 using UnityEngine.XR.Interaction.Toolkit.Inputs;
 
@@ -45,8 +44,6 @@ internal static class ScenarioDetailModalSceneBuilder
         Scene scene = SceneManager.GetSceneByPath(ScenePath);
         if (!scene.IsValid() || !scene.isLoaded)
             return;
-
-        EnsureXrLineTrackingGates(scene);
 
         ScenarioSelectionHud hud = scene.GetRootGameObjects()
             .SelectMany(root => root.GetComponentsInChildren<ScenarioSelectionHud>(true))
@@ -309,57 +306,6 @@ internal static class ScenarioDetailModalSceneBuilder
         // Controller objects are authored directly in the scene. Do not create
         // standalone interactors during script reloads or overwrite scene edits.
         return changed;
-    }
-
-    private static void EnsureXrLineTrackingGates(Scene scene)
-    {
-        bool changed = false;
-        foreach (LineRenderer lineRenderer in scene.GetRootGameObjects()
-                     .SelectMany(root => root.GetComponentsInChildren<LineRenderer>(true)))
-        {
-            if (lineRenderer.gameObject.name != "LineVisual")
-                continue;
-
-            XRLineVisualTrackingGate gate = lineRenderer.GetComponent<XRLineVisualTrackingGate>();
-            if (gate == null)
-            {
-                gate = Undo.AddComponent<XRLineVisualTrackingGate>(lineRenderer.gameObject);
-                changed = true;
-            }
-
-            XRNode node = HasAncestorNamed(lineRenderer.transform, "XR Controller Left")
-                ? XRNode.LeftHand
-                : XRNode.RightHand;
-            SerializedObject serializedGate = new(gate);
-            SerializedProperty nodeProperty = serializedGate.FindProperty("xrNode");
-            SerializedProperty rendererProperty = serializedGate.FindProperty("lineRenderer");
-            if (nodeProperty.enumValueIndex != (int)node)
-            {
-                nodeProperty.enumValueIndex = (int)node;
-                changed = true;
-            }
-            if (rendererProperty.objectReferenceValue != lineRenderer)
-            {
-                rendererProperty.objectReferenceValue = lineRenderer;
-                changed = true;
-            }
-            serializedGate.ApplyModifiedPropertiesWithoutUndo();
-        }
-
-        if (!changed)
-            return;
-
-        EditorSceneManager.MarkSceneDirty(scene);
-        EditorSceneManager.SaveScene(scene);
-        Debug.Log("Added tracking gates to XR controller line visuals.");
-    }
-
-    private static bool HasAncestorNamed(Transform transform, string objectName)
-    {
-        for (Transform current = transform; current != null; current = current.parent)
-            if (current.name == objectName)
-                return true;
-        return false;
     }
 
     private static bool AddInteractor(Transform parent, string objectName, string prefabPath)
