@@ -1,6 +1,7 @@
 using Unity.XR.CoreUtils;
 using UnityEngine;
 using UnityEngine.XR.Interaction.Toolkit;
+using UnityEngine.XR.Interaction.Toolkit.Locomotion.Teleportation;
 
 [DisallowMultipleComponent]
 [RequireComponent(typeof(Collider))]
@@ -8,6 +9,7 @@ public sealed class XRLocationTeleportTarget : UnityEngine.XR.Interaction.Toolki
 {
     [Header("Teleport Destination")]
     [SerializeField] XROrigin xrOrigin;
+    [SerializeField] TeleportationProvider teleportationProvider;
     [SerializeField] Transform destination;
     [SerializeField, Min(0f)] float floorOffset = 0.03f;
     [SerializeField] bool preserveCurrentHeight = true;
@@ -21,45 +23,69 @@ public sealed class XRLocationTeleportTarget : UnityEngine.XR.Interaction.Toolki
         if (destination == null)
             destination = transform;
         if (xrOrigin == null)
-            xrOrigin = FindFirstObjectByType<XROrigin>();
+            xrOrigin = FindAnyObjectByType<XROrigin>();
+        if (teleportationProvider == null)
+            teleportationProvider = FindAnyObjectByType<TeleportationProvider>();
     }
 
     protected override void OnActivated(ActivateEventArgs args)
     {
         base.OnActivated(args);
-        Teleport();
+        TryTeleport();
     }
 
     public void Teleport()
     {
+        TryTeleport();
+    }
+
+    public bool TryTeleport()
+    {
+        if (teleportationProvider == null || !TryGetDesiredFeetPosition(out var desiredFeetPosition, out var destinationForward))
+        {
+            Debug.LogWarning("XR teleport request is missing its provider, origin, camera, or destination.", this);
+            return false;
+        }
+
+        var originTransform = xrOrigin.transform;
+        var up = originTransform.up;
+        var shouldAlignView = alignViewToDestination && destinationForward.sqrMagnitude > 0.5f;
+        var request = new TeleportRequest
+        {
+            destinationPosition = desiredFeetPosition,
+            destinationRotation = shouldAlignView
+                ? Quaternion.LookRotation(destinationForward, up)
+                : originTransform.rotation,
+            matchOrientation = shouldAlignView
+                ? MatchOrientation.TargetUpAndForward
+                : MatchOrientation.None,
+            requestTime = Time.time,
+        };
+
+        return teleportationProvider.QueueTeleportRequest(request);
+    }
+
+    bool TryGetDesiredFeetPosition(out Vector3 desiredFeetPosition, out Vector3 destinationForward)
+    {
+        desiredFeetPosition = default;
+        destinationForward = default;
+
         if (xrOrigin == null || xrOrigin.Camera == null || destination == null)
-            return;
+            return false;
 
         var originTransform = xrOrigin.transform;
         var up = originTransform.up;
         var cameraPosition = xrOrigin.Camera.transform.position;
         var cameraHeight = Vector3.Dot(cameraPosition - originTransform.position, up);
         var currentFeetPosition = cameraPosition - up * cameraHeight;
-        var destinationForward = Vector3.ProjectOnPlane(destination.forward, up).normalized;
-        var desiredFeetPosition = destination.position + up * floorOffset;
+        destinationForward = Vector3.ProjectOnPlane(destination.forward, up).normalized;
+        desiredFeetPosition = destination.position + up * floorOffset;
         if (destinationForward.sqrMagnitude > 0.5f)
             desiredFeetPosition += destinationForward * arrivalForwardOffset;
 
-        var movement = desiredFeetPosition - currentFeetPosition;
-
         if (preserveCurrentHeight)
-            movement = Vector3.ProjectOnPlane(movement, up);
+            desiredFeetPosition = currentFeetPosition + Vector3.ProjectOnPlane(desiredFeetPosition - currentFeetPosition, up);
 
-        originTransform.position += movement;
-
-        if (!alignViewToDestination || destinationForward.sqrMagnitude <= 0.5f)
-            return;
-
-        var currentViewForward = Vector3.ProjectOnPlane(xrOrigin.Camera.transform.forward, up).normalized;
-        if (currentViewForward.sqrMagnitude <= 0.5f)
-            return;
-
-        var yaw = Vector3.SignedAngle(currentViewForward, destinationForward, up);
-        originTransform.RotateAround(xrOrigin.Camera.transform.position, up, yaw);
+        return true;
     }
 }

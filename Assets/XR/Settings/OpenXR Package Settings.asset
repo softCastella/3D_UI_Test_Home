@@ -101,9 +101,7 @@ MonoBehaviour:
   m_Name: Standalone
   m_EditorClassIdentifier: Unity.XR.OpenXR::UnityEngine.XR.OpenXR.OpenXRSettings
   features:
-  - {fileID: 5625442998372269996}
   - {fileID: -5209725491106256633}
-  - {fileID: -7028384554900082642}
   - {fileID: 4215861232572120512}
   - {fileID: 7462166492036182177}
   - {fileID: 1494015033431097669}
@@ -886,12 +884,9 @@ MonoBehaviour:
   m_Name: Android
   m_EditorClassIdentifier: Unity.XR.OpenXR::UnityEngine.XR.OpenXR.OpenXRSettings
   features:
-  - {fileID: 8443321412883826826}
-  - {fileID: -4451777201363043673}
   - {fileID: 708179417955794329}
   - {fileID: -6693962927646295471}
   - {fileID: -7305985898624611962}
-  - {fileID: 493283356082796771}
   - {fileID: 6306365209929632895}
   - {fileID: -4432556259207423709}
   - {fileID: -2603852264722326468}
@@ -965,8 +960,8 @@ MonoBehaviour:
     enabled: 1
   forceRemoveInternetPermission: 0
   m_symmetricProjection: 0
+  m_foveatedRenderingApi: 0
   systemSplashScreen: {fileID: 0}
-  enableSystemKeyboard: 0
   m_optimizeBufferDiscards: 1
   lateLatchingMode: 0
   lateLatchingDebug: 0

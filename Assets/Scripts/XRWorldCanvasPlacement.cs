@@ -11,7 +11,12 @@ public sealed class XRWorldCanvasPlacement : MonoBehaviour
     [SerializeField] private bool keepAtEyeHeight = true;
     [SerializeField] private float verticalOffset;
 
-    private IEnumerator Start()
+    public void PlaceFromCamera()
+    {
+        StartCoroutine(PlaceAfterTrackingWarmup());
+    }
+
+    private IEnumerator PlaceAfterTrackingWarmup()
     {
         for (int frame = 0; frame < trackingWarmupFrames; frame++)
             yield return new WaitForEndOfFrame();

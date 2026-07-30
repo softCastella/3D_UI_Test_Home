@@ -1,6 +1,5 @@
 using System.Collections;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 [DisallowMultipleComponent]
 public sealed class IntroSceneTransition : MonoBehaviour
@@ -43,6 +42,6 @@ public sealed class IntroSceneTransition : MonoBehaviour
             yield break;
         }
 
-        yield return SceneManager.LoadSceneAsync(nextSceneName, LoadSceneMode.Single);
+        LoadingSceneController.LoadTarget(nextSceneName);
     }
 }

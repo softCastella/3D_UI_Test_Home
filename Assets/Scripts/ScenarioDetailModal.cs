@@ -386,10 +386,6 @@ public sealed class ScenarioDetailModal : MonoBehaviour
 
     private void SetModalHierarchyActive(bool visible)
     {
-        Canvas parentCanvas = modalRoot != null ? modalRoot.GetComponentInParent<Canvas>(true) : null;
-        if (parentCanvas != null)
-            parentCanvas.gameObject.SetActive(visible);
-
         if (modalRoot != null)
             modalRoot.SetActive(visible);
     }
